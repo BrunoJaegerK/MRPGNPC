@@ -664,6 +664,32 @@ public class MRPGNPC extends PluginBase {
             return Item.get(0);
         }
     }
+    private Path findGeometryFile(Path skinFolder) throws IOException {
+        Path preferred = skinFolder.resolve("geometry.json");
+        if (Files.isRegularFile(preferred)) return preferred;
+        try (java.util.stream.Stream<Path> files = Files.list(skinFolder)) {
+            return files.filter(Files::isRegularFile)
+                    .filter(file -> file.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".geo.json"))
+                    .sorted()
+                    .findFirst()
+                    .orElse(preferred);
+        }
+    }
+
+    private Path findAnimationFile(Path skinFolder) throws IOException {
+        Path preferred = skinFolder.resolve("animations.json");
+        if (Files.isRegularFile(preferred)) return preferred;
+        Path legacy = skinFolder.resolve("animation.json");
+        if (Files.isRegularFile(legacy)) return legacy;
+        try (java.util.stream.Stream<Path> files = Files.list(skinFolder)) {
+            return files.filter(Files::isRegularFile)
+                    .filter(file -> file.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".animation.json"))
+                    .sorted()
+                    .findFirst()
+                    .orElse(null);
+        }
+    }
+
     public void checkSkins() throws IOException {
         Path skinPath = getDataFolder().toPath().resolve("Skins");
         File skinsFolder = skinPath.toFile();
@@ -677,7 +703,7 @@ public class MRPGNPC extends PluginBase {
 
         for (File skinFolder : folders) {
             if (!skinFolder.isDirectory()) continue;
-            Path geometryPath = skinFolder.toPath().resolve("geometry.json");
+            Path geometryPath = findGeometryFile(skinFolder.toPath());
             Path texturePath = skinFolder.toPath().resolve("skin.png");
             if (!Files.isRegularFile(geometryPath) || !Files.isRegularFile(texturePath)) {
                 getServer().getLogger().warning("Skipping incomplete MRPGNPC skin folder: " + skinFolder.getName());
@@ -708,10 +734,7 @@ public class MRPGNPC extends PluginBase {
                     getServer().getLogger().warning("Could not load cape for skin " + skinFolder.getName());
                 }
             }
-            Path animationPath = skinFolder.toPath().resolve("animations.json");
-            if (!Files.isRegularFile(animationPath)) {
-                animationPath = skinFolder.toPath().resolve("animation.json");
-            }
+            Path animationPath = findAnimationFile(skinFolder.toPath());
             if (Files.isRegularFile(animationPath)) {
                 try {
                     String animationData = Files.readString(animationPath, StandardCharsets.UTF_8);
@@ -736,7 +759,7 @@ public class MRPGNPC extends PluginBase {
         Path skinfolder = getDataFolder().toPath().resolve("Skins");
         Path skinthings = skinfolder.resolve(path);
         Path skinpath = skinthings.resolve("skin.png");
-        Path geometrypath = skinthings.resolve("geometry.json");
+        Path geometrypath = findGeometryFile(skinthings);
         // Path animationpath = skinPath.resolve(skinthings.getName()).resolve("geometry.animation.json");
         BufferedImage skindata = null;
         String skingeometry = null;
@@ -771,7 +794,7 @@ public class MRPGNPC extends PluginBase {
     public Skin newSkinNew(Path path) throws IOException {
         Skin skin = new Skin();
         skin.generateSkinId("mrpgnpc");
-        String geometryData = Files.readString(path.resolve("geometry.json"), StandardCharsets.UTF_8);
+        String geometryData = Files.readString(findGeometryFile(path), StandardCharsets.UTF_8);
         String geometryIdentifier = getGeometryIdentifier(geometryData);
         skin.setGeometryName(geometryIdentifier);
         skin.setSkinResourcePatch("{\"geometry\":{\"default\":\"" + geometryIdentifier + "\"}}");
