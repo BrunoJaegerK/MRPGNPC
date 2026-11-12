@@ -98,7 +98,7 @@ public class AutoSpawn extends Task {
                             spawnedAtLeastOne = true;
                         }
                     }
-                    if (spawnedAtLeastOne) spawnTick.put(mobFeature, 0);
+                    spawnTick.put(mobFeature, 0);
                 }
             } catch (RuntimeException exception) {
                 MRPGNPC.mrpgnpc.getServer().getLogger().warning(

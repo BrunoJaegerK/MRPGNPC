@@ -75,10 +75,8 @@ public class worldRandomSpawn extends Task {
                         String mobFeature = "Random:" + mobFile + ":" + disappearDistance;
                         MobNPC npc = MRPGNPC.mrpgnpc.spawnNPC(
                                 Server.getInstance().getConsoleSender(), mobFile, location, mobFeature);
-                        if (npc != null) {
-                            npc.spawnToAll();
-                            spawnTick.put(key, cooldown);
-                        }
+                        if (npc != null) npc.spawnToAll();
+                        spawnTick.put(key, cooldown);
                     }
                 } catch (RuntimeException exception) {
                     Server.getInstance().getLogger().warning(
