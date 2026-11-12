@@ -50,7 +50,8 @@ jobs:
           set -euo pipefail
           mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/Mobs
           mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/Points
-          cp target/MRPGNPC-1.2.6-PM1E.jar NukkitPetteriM1Edition/plugins/MRPGNPC.jar
+          mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/NPCs
+          cp target/MRPGNPC-1.2.7-PM1E.jar NukkitPetteriM1Edition/plugins/MRPGNPC.jar
           cat > /tmp/ScriptEngineSmoke.java <<'JAVA'
           import javax.script.ScriptEngine;
           import javax.script.ScriptEngineManager;
@@ -100,11 +101,27 @@ jobs:
           SpawnList:
             - "smoke:0:1:1"
           YAML
+          cat > NukkitPetteriM1Edition/plugins/MRPGNPC/NPCs/display-smoke.yml <<'YAML'
+          DisplayName: "Display NPC smoke test"
+          ModelType: "PLAYER"
+          Skin: ""
+          Scale: 1.0
+          HitboxWidth: 0.6
+          HitboxHeight: 1.8
+          Immobile: true
+          Collidable: false
+          NameTag: "Display smoke"
+          NameTagVisible: true
+          NameTagAlwaysVisible: true
+          Animation: ""
+          AnimationInterval: 40
+          YAML
           cd NukkitPetteriM1Edition
-          timeout 60s java -Xms512m -Xmx1g -jar target/Nukkit-PM1E.jar < <(sleep 20; echo 'mrn mob spawn smoke 0 80 0 world 0 0'; sleep 10; echo stop) > smoke-test.log 2>&1
+          timeout 60s java -Xms512m -Xmx1g -jar target/Nukkit-PM1E.jar < <(sleep 20; echo 'mrn mob spawn smoke 0 80 0 world 0 0'; echo 'mrn npc spawn display-smoke 2 80 0 world 0 0'; sleep 10; echo stop) > smoke-test.log 2>&1
           cat smoke-test.log
           grep -q "MRPGNPC is enable" smoke-test.log
           grep -q "Mob spawned" smoke-test.log
+          grep -q "Display NPC spawned" smoke-test.log
           if grep -E "NullPointerException|NoClassDefFoundError|ClassNotFoundException|Skipping invalid MRPGNPC spawn point" smoke-test.log; then
             echo "MRPGNPC smoke test reported a runtime error."
             exit 1
@@ -114,5 +131,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MRPGNPC-PM1E
-          path: target/MRPGNPC-1.2.6-PM1E.jar
+          path: target/MRPGNPC-1.2.7-PM1E.jar
           if-no-files-found: error
