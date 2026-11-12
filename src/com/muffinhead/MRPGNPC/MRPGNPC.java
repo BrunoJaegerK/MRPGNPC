@@ -319,7 +319,9 @@ public class MRPGNPC extends PluginBase {
         args[7] = String.valueOf(location.getYaw());
         args[8] = String.valueOf(location.getPitch());
         MobNPC npc = spawnNPC(sender,args);
-        npc.setMobFeature(mobFeature);
+        if (npc != null) {
+            npc.setMobFeature(mobFeature);
+        }
         return npc;
     }
 
@@ -431,9 +433,20 @@ public class MRPGNPC extends PluginBase {
     }
 
     public Item getItemByString(String s){
-        Item item = Item.get(Integer.parseInt(s.split(":")[0]));
-        item.setDamage(Integer.parseInt(s.split(":")[1]));
-        return item;
+        try {
+            if (s == null) throw new IllegalArgumentException("Item definition is null");
+            String[] parts = s.split(":", -1);
+            if (parts.length != 2) throw new IllegalArgumentException("Expected item format id:damage");
+            int id = Integer.parseInt(parts[0].trim());
+            int damage = Integer.parseInt(parts[1].trim());
+            Item item = Item.get(id);
+            if (item == null) throw new IllegalArgumentException("Unknown item id " + id);
+            item.setDamage(damage);
+            return item;
+        } catch (RuntimeException exception) {
+            getServer().getLogger().warning("Invalid MRPGNPC ItemInHand '" + s + "'. Using air instead.");
+            return Item.get(0);
+        }
     }
     public void checkSkins() throws IOException {
         Path skinPath = getDataFolder().toPath().resolve("Skins");
