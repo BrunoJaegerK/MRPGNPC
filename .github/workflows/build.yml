@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: mrpgnpc-build-${{ github.ref }}
+  group: mrpgnpc-build-v2-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
