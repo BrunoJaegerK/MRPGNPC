@@ -735,7 +735,7 @@ public class MRPGNPC extends PluginBase {
                 }
             }
             Path animationPath = findAnimationFile(skinFolder.toPath());
-            if (Files.isRegularFile(animationPath)) {
+            if (animationPath != null && Files.isRegularFile(animationPath)) {
                 try {
                     String animationData = Files.readString(animationPath, StandardCharsets.UTF_8);
                     if (!animationData.trim().isEmpty()) skin.setAnimationData(animationData);
