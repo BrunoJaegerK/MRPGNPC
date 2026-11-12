@@ -4,7 +4,7 @@ main: com.muffinhead.MRPGNPC.MRPGNPC
 load: POSTWORLD
 api: "1.0.8"
 softdepend: [MDungeon]
-version: "1.2.6-PM1E"
+version: "1.2.7-PM1E"
 commands:
   mrn:
     description: "mrn"
