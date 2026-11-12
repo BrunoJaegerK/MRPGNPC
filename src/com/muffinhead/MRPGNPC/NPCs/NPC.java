@@ -295,20 +295,30 @@ public class NPC extends EntityHuman {
             y = this.y - target.y;
             z = this.z - target.z;
         }
-        double yaw = Math.asin(x / Math.sqrt(x * x + z * z)) / Math.PI * 180.0D;
-        double asin = Math.asin(y / Math.sqrt(x * x + z * z + y * y)) / Math.PI * 180.0D;
-        long pitch;
-        pitch = Math.round(asin);
-        if (!(z > 0.0D)) {
-        } else {
+        double horizontalDistance = Math.sqrt(x * x + z * z);
+        double totalDistance = Math.sqrt(x * x + y * y + z * z);
+        // Keep the current heading when the target is directly above/below or overlaps this NPC.
+        // Dividing by a zero horizontal distance previously produced NaN rotations and motion.
+        double yaw = horizontalDistance < 1.0E-8D
+                ? this.yaw
+                : Math.asin(Math.max(-1.0D, Math.min(1.0D, x / horizontalDistance))) / Math.PI * 180.0D;
+        double asin = totalDistance < 1.0E-8D
+                ? 0.0D
+                : Math.asin(Math.max(-1.0D, Math.min(1.0D, y / totalDistance))) / Math.PI * 180.0D;
+        long pitch = Math.round(asin);
+        if (horizontalDistance >= 1.0E-8D && z > 0.0D) {
             yaw = -yaw + 180.0D;
         }
         double frontYaw = ((yaw + 90.0D) * Math.PI) / 180.0D;
         setRotation(yaw, pitch);
 
-
-        frontX = speed * 0.15D * Math.cos(frontYaw);
-        frontZ = speed * 0.15D * Math.sin(frontYaw);
+        if (horizontalDistance < 1.0E-8D) {
+            frontX = 0.0D;
+            frontZ = 0.0D;
+        } else {
+            frontX = speed * 0.15D * Math.cos(frontYaw);
+            frontZ = speed * 0.15D * Math.sin(frontYaw);
+        }
 
 
         boolean isjump = true;
@@ -429,7 +439,7 @@ public class NPC extends EntityHuman {
                     case NORTH: {
                         if (block.z < this.z) {
                             if (block.y + 1 > this.y) {
-                                if (block.x <= this.x + 0.05 || block.x >= this.x - 0.05) {
+                                if (block.x <= this.x + 0.05 && block.x >= this.x - 0.05) {
                                     blocks.add(block);
                                 }
                             }
@@ -449,7 +459,7 @@ public class NPC extends EntityHuman {
                     case WEST: {
                         if (block.x < this.x) {
                             if (block.y + 1 > this.y) {
-                                if (block.z <= this.z + 0.05 || block.z >= this.z - 0.05) {
+                                if (block.z <= this.z + 0.05 && block.z >= this.z - 0.05) {
                                     blocks.add(block);
                                 }
                             }
