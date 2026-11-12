@@ -11,6 +11,7 @@ import cn.nukkit.entity.mob.EntityZombie;
 import cn.nukkit.item.Item;
 import cn.nukkit.level.Level;
 import cn.nukkit.level.Location;
+import cn.nukkit.math.Vector3;
 import cn.nukkit.nbt.tag.CompoundTag;
 import cn.nukkit.plugin.PluginBase;
 import cn.nukkit.utils.Config;
@@ -323,84 +324,111 @@ public class MRPGNPC extends PluginBase {
     }
 
     public MobNPC spawnNPC(CommandSender sender, String[] args) {
-        if (args.length < 7) {
+        if (args == null || args.length < 3) {
+            sender.sendMessage("§cUsage: /mrn mob spawn <mob> [x y z world yaw pitch]");
+            return null;
+        }
+
+        String mobFile = args[2];
+        Config config = mobconfigs.get(mobFile);
+        if (config == null) {
+            sender.sendMessage("§cMob configuration not found: " + mobFile);
+            return null;
+        }
+
+        Location location;
+        if (args.length == 3) {
             if (!(sender instanceof Player)) {
-                sender.sendMessage("The console need type the coordinates");
+                sender.sendMessage("§cConsole spawning requires x y z world yaw pitch.");
                 return null;
-            }else{
-                Config config = mobconfigs.get(args[2]);
-                if (config!=null) {
-                    MobNPC npc = new MobNPC(((Player) sender).getChunk(), NPC.getDefaultNBT(((Player) sender).getTargetBlock(3)));
-                    npc.setDisplayName(config.getString("DisplayName"));
-                    npc.setMaxHealth(config.getInt("MaxHealth"));
-                    npc.setHealth(npc.getMaxHealth());
-                    npc.setScale((float) config.getDouble("Size"));
-                    npc.setSpeed(config.getDouble("MovementSpeed"));
-                    npc.setDamage(config.getDouble("Damage"));
-                    npc.setKnockback(config.getDouble("Knockback"));
-                    npc.setDefenseformula(config.getString("DefenseFormula"));
-                    npc.setAttackdelay(config.getInt("AttackDelay"));
-                    npc.setDamagedelay(config.getInt("DamageDelay"));
-                    npc.setBedamageddelay(config.getInt("BedamagedDelay"));
-                    npc.setAttackrange(config.getDouble("AttackRange"));
-                    npc.setHaterange(config.getDouble("HateRange"));
-                    npc.setNohatesheal(config.getString("NoHatesHeal"));
-                    npc.setHitrange(config.getDouble("HitRange"));
-                    npc.setCanbeknockback(config.getBoolean("CanBeKnockBack"));
-                    npc.setDeathcommands(new ArrayList<>(config.getList("DeathCommands")));
-                    npc.setCamp(config.getString("Camp"));
-                    npc.setSkills(new ArrayList<>(config.getList("Skills")));
-                    npc.getInventory().setItemInHand(getItemByString(config.getString("ItemInHand")));
-                    npc.setBeDamagedblockparticle(config.getString("BeDamagedBlockParticleID"));
-                    npc.setActiveattackcreature(new ArrayList<>(config.getList("ActiveAttackCreature")));
-                    npc.setUnattractivecreature(new ArrayList<>(config.getList("UnattractiveCreature")));
-                    npc.setDrops(new ArrayList<>(config.getList("Drops")));
-                    npc.setSkinname(config.getString("Skin"));
-                    npc.setSkin(skins.get(config.getString("Skin")));
-                    npc.setEnableBox(config.getBoolean("BoundingBox"));
-                    npc.moveLimitDistance = config.getDouble("MoveLimitDistance");
-                    return npc;
-                }
             }
-        }else{
-            Config config = mobconfigs.get(args[2]);
-            if (config!=null) {
-                Location location = new Location(Double.parseDouble(args[3]), Double.parseDouble(args[4]), Double.parseDouble(args[5]),Double.parseDouble(args[7]),Double.parseDouble(args[8]),getServer().getLevelByName(args[6]));
-                MobNPC npc = new MobNPC(location.getChunk(), MobNPC.getDefaultNBT(location));
-                npc.setDisplayName(config.getString("DisplayName"));
-                npc.setMaxHealth(config.getInt("MaxHealth"));
-                npc.setHealth(npc.getMaxHealth());
-                npc.setScale((float) config.getDouble("Size"));
-                npc.setSpeed(config.getDouble("MovementSpeed"));
-                npc.setDamage(config.getDouble("Damage"));
-                npc.setKnockback(config.getDouble("Knockback"));
-                npc.setDefenseformula(config.getString("DefenseFormula"));
-                npc.setAttackdelay(config.getInt("AttackDelay"));
-                npc.setDamagedelay(config.getInt("DamageDelay"));
-                npc.setBedamageddelay(config.getInt("BedamagedDelay"));
-                npc.setAttackrange(config.getDouble("AttackRange"));
-                npc.setHaterange(config.getDouble("HateRange"));
-                npc.setNohatesheal(config.getString("NoHatesHeal"));
-                npc.setHitrange(config.getDouble("HitRange"));
-                npc.setCanbeknockback(config.getBoolean("CanBeKnockBack"));
-                npc.setDeathcommands(new ArrayList<>(config.getList("DeathCommands")));
-                npc.setCamp(config.getString("Camp"));
-                npc.setSkills(new ArrayList<>(config.getList("Skills")));
-                npc.getInventory().setItemInHand(getItemByString(config.getString("ItemInHand")));
-                npc.setBeDamagedblockparticle(config.getString("BeDamagedBlockParticleID"));
-                npc.setActiveattackcreature(new ArrayList<>(config.getList("ActiveAttackCreature")));
-                npc.setUnattractivecreature(new ArrayList<>(config.getList("UnattractiveCreature")));
-                npc.setDrops(new ArrayList<>(config.getList("Drops")));
-                npc.setSkinname(config.getString("Skin"));
-                npc.setSkin(skins.get(config.getString("Skin")));
-                npc.setEnableBox(config.getBoolean("BoundingBox"));
-                npc.moveLimitDistance = config.getDouble("MoveLimitDistance");
-                return npc;
+            Player player = (Player) sender;
+            Vector3 target = player.getTargetBlock(3);
+            if (target == null) target = player.getLocation();
+            location = new Location(target.x, target.y, target.z,
+                    player.getYaw(), player.getPitch(), player.getLevel());
+        } else {
+            if (args.length < 9) {
+                sender.sendMessage("§cUsage: /mrn mob spawn <mob> [x y z world yaw pitch]");
+                return null;
+            }
+            String levelName = args[6];
+            if (!getServer().isLevelLoaded(levelName) && !getServer().loadLevel(levelName)) {
+                sender.sendMessage("§cWorld not found: " + levelName);
+                return null;
+            }
+            Level level = getServer().getLevelByName(levelName);
+            if (level == null) {
+                sender.sendMessage("§cWorld not found: " + levelName);
+                return null;
+            }
+            try {
+                location = new Location(
+                        Double.parseDouble(args[3]),
+                        Double.parseDouble(args[4]),
+                        Double.parseDouble(args[5]),
+                        Double.parseDouble(args[7]),
+                        Double.parseDouble(args[8]),
+                        level
+                );
+            } catch (NumberFormatException exception) {
+                sender.sendMessage("§cInvalid coordinates or rotation.");
+                return null;
             }
         }
-        return null;
+
+        Level level = location.getLevel();
+        if (level == null || !level.loadChunk(location.getChunkX(), location.getChunkZ(), true)) {
+            sender.sendMessage("§cCould not load the mob spawn chunk.");
+            return null;
+        }
+        if (location.getChunk() == null) {
+            sender.sendMessage("§cCould not access the mob spawn chunk.");
+            return null;
+        }
+
+        MobNPC npc = new MobNPC(location.getChunk(), MobNPC.getDefaultNBT(location));
+        npc.setDisplayName(config.getString("DisplayName", mobFile));
+        npc.setMaxHealth(Math.max(1, config.getInt("MaxHealth", 40)));
+        npc.setHealth(npc.getMaxHealth());
+        npc.setScale((float) config.getDouble("Size", 1.0));
+        npc.setSpeed(config.getDouble("MovementSpeed", 1.0));
+        npc.setDamage(config.getDouble("Damage", 3.0));
+        npc.setKnockback(config.getDouble("Knockback",
+                config.getDouble("KnockBack", 0.1)));
+        npc.setDefenseformula(config.getString("DefenseFormula", "source.damage"));
+        npc.setAttackdelay(config.getInt("AttackDelay", 30));
+        npc.setDamagedelay(config.getInt("DamageDelay", 0));
+        npc.setBedamageddelay(config.getInt("BedamagedDelay", 0));
+        npc.setAttackrange(config.getDouble("AttackRange", 1.2));
+        npc.setHaterange(config.getDouble("HateRange", 15.0));
+        npc.setNohatesheal(config.getString("NoHatesHeal", "200:1.0"));
+        npc.setHitrange(config.getDouble("HitRange", 0.15));
+        npc.setCanbeknockback(config.getBoolean("CanBeKnockBack", false));
+        npc.setDeathcommands(getStringList(config, "DeathCommands"));
+        npc.setCamp(config.getString("Camp", "Example"));
+        npc.setSkills(getStringList(config, "Skills"));
+        npc.getInventory().setItemInHand(getItemByString(config.getString("ItemInHand", "267:0")));
+        npc.setBeDamagedblockparticle(config.getString("BeDamagedBlockParticleID", "152:0"));
+        npc.setActiveattackcreature(getStringList(config, "ActiveAttackCreature"));
+        npc.setUnattractivecreature(getStringList(config, "UnattractiveCreature"));
+        npc.setDrops(getStringList(config, "Drops"));
+        String skinName = config.getString("Skin", "");
+        npc.setSkinname(skinName);
+        Skin skin = skins.get(skinName);
+        if (skin != null) npc.setSkin(skin);
+        boolean boundingBox = config.getAll().containsKey("BoundingBox")
+                ? config.getBoolean("BoundingBox")
+                : config.getBoolean("BoudningBox", true);
+        npc.setEnableBox(boundingBox);
+        npc.moveLimitDistance = config.getDouble("MoveLimitDistance", 15.0);
+        return npc;
     }
 
+    private List<String> getStringList(Config config, String key) {
+        List<String> values = config.getList(key);
+        return values == null ? new ArrayList<>() : new ArrayList<>(values);
+    }
 
     public Item getItemByString(String s){
         Item item = Item.get(Integer.parseInt(s.split(":")[0]));
