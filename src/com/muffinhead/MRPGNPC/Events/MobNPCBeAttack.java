@@ -21,6 +21,7 @@ import cn.nukkit.network.protocol.DataPacket;
 import cn.nukkit.network.protocol.EntityEventPacket;
 import cn.nukkit.network.protocol.SetEntityDataPacket;
 import com.muffinhead.MRPGNPC.Effects.Bullet;
+import com.muffinhead.MRPGNPC.NPCs.DisplayNPC;
 import com.muffinhead.MRPGNPC.NPCs.MobNPC;
 import com.muffinhead.MRPGNPC.NPCs.NPC;
 
@@ -31,6 +32,11 @@ public class MobNPCBeAttack implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onDamaged(EntityDamageEvent event) {
         Entity entity = event.getEntity();
+        if (entity instanceof DisplayNPC) {
+            // Decorative NPCs are intentionally non-interactive and cannot be damaged.
+            event.setCancelled();
+            return;
+        }
         if (entity instanceof MobNPC) {
             // Respect cancellations made by other plugins before changing damage, shields or threat pools.
             if (event.isCancelled()) return;
