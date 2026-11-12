@@ -194,10 +194,12 @@ public class MobNPC extends NPC {
     public void skillTickUpdate(){
         if (this.target != null) {
             for (String s : skillTick.keySet()) {
-                if (skillTick.get(s) > 0) {
-                    skillTick.put(s, skillTick.get(s) - 1);
-                }else{
-                    skillTick.put(skinname,0);
+                int remaining = skillTick.getOrDefault(s, 0);
+                if (remaining > 0) {
+                    skillTick.put(s, remaining - 1);
+                } else {
+                    // Reset the actual skill timer, not the NPC skin-name key.
+                    skillTick.put(s, 0);
                 }
             }
         }
@@ -222,15 +224,22 @@ public class MobNPC extends NPC {
 
     public List<String> GetNPCSkills(MobNPC npc,String type){
         List<String> finalskills = new ArrayList<>();
-        if (npc.skills!=null){
-            for (String skillandcondition:npc.skills){
-                String prob = skillandcondition.split(":")[0];
-                String condition = skillandcondition.split(":")[1];
-                String skill = skillandcondition.split(":")[2];
-                if (new Random().nextInt(100)+1<=Integer.parseInt(prob)) {
-                    if (condition.contains(type)){
-                        finalskills.add(prob+":"+condition+":"+skill);
+        if (npc.skills != null) {
+            for (String skillAndCondition : npc.skills) {
+                if (skillAndCondition == null) continue;
+                String[] parts = skillAndCondition.split(":", 3);
+                if (parts.length < 3) {
+                    getServer().getLogger().warning("Ignoring malformed MRPGNPC skill entry: " + skillAndCondition);
+                    continue;
+                }
+                try {
+                    int probability = Integer.parseInt(parts[0]);
+                    if (probability <= 0 || probability > 100) continue;
+                    if (parts[1].contains(type) && ThreadLocalRandom.current().nextInt(100) + 1 <= probability) {
+                        finalskills.add(parts[0] + ":" + parts[1] + ":" + parts[2]);
                     }
+                } catch (NumberFormatException exception) {
+                    getServer().getLogger().warning("Ignoring MRPGNPC skill with invalid probability: " + skillAndCondition);
                 }
             }
         }
