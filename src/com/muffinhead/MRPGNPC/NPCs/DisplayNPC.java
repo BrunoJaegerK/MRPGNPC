@@ -1,10 +1,8 @@
 package com.muffinhead.MRPGNPC.NPCs;
 
-import cn.nukkit.entity.Entity;
 import cn.nukkit.event.entity.EntityDamageEvent;
 import cn.nukkit.level.format.FullChunk;
 import cn.nukkit.nbt.tag.CompoundTag;
-import cn.nukkit.math.Vector3;
 
 /**
  * A purely decorative NPC. It deliberately does not inherit MobNPC, so none of
