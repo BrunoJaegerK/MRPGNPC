@@ -45,6 +45,55 @@ jobs:
       - name: Build MRPGNPC
         run: mvn --batch-mode --no-transfer-progress clean package
 
+      - name: Smoke test plugin load and NPC initialization
+        run: |
+          set -euo pipefail
+          mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/Mobs
+          mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/Points
+          cp target/MRPGNPC-1.2.6-PM1E.jar NukkitPetteriM1Edition/plugins/MRPGNPC.jar
+          cat > NukkitPetteriM1Edition/plugins/MRPGNPC/Mobs/smoke.yml <<'YAML'
+          DisplayName: "MRPGNPC smoke test"
+          MaxHealth: 40
+          Size: 1.0
+          MovementSpeed: 1.0
+          Damage: 3.0
+          Knockback: 0.1
+          DefenseFormula: "source.damage"
+          AttackDelay: 30
+          DamageDelay: 0
+          BedamagedDelay: 0
+          AttackRange: 1.2
+          HitRange: 0.15
+          HateRange: 15.0
+          NoHatesHeal: "200:1.0"
+          CanBeKnockBack: false
+          BoundingBox: true
+          DeathCommands: []
+          Skin: "missing-skin-fallback"
+          ItemInHand: "267:0"
+          BeDamagedBlockParticleID: "152:0"
+          MoveLimitDistance: 15.0
+          ActiveAttackCreature: []
+          UnattractiveCreature: []
+          Drops: []
+          Camp: "SmokeTest"
+          Skills: []
+          YAML
+          cat > NukkitPetteriM1Edition/plugins/MRPGNPC/Points/smoke.yml <<'YAML'
+          PointName: "smoke"
+          PointPosition: "0:80:0:world:0:0"
+          SpawnList:
+            - "smoke:0:1:1"
+          YAML
+          cd NukkitPetteriM1Edition
+          timeout 60s java -Xms512m -Xmx1g -jar target/Nukkit-PM1E.jar < <(sleep 40; echo stop) > smoke-test.log 2>&1
+          cat smoke-test.log
+          grep -q "MRPGNPC is enable" smoke-test.log
+          if grep -E "NullPointerException|NoClassDefFoundError|ClassNotFoundException|Skipping invalid MRPGNPC spawn point" smoke-test.log; then
+            echo "MRPGNPC smoke test reported a runtime error."
+            exit 1
+          fi
+
       - name: Upload plugin JAR
         uses: actions/upload-artifact@v4
         with:
