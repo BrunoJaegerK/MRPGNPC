@@ -750,7 +750,7 @@ public class MRPGNPC extends PluginBase {
 
     private String getGeometryIdentifier(String geometryData) {
         if (geometryData == null || geometryData.isEmpty()) return "geometry.mrpgnpc";
-        Matcher matcher = Pattern.compile("\\\"identifier\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").matcher(geometryData);
+        Matcher matcher = Pattern.compile("\"identifier\"\\s*:\\s*\"([^\"]+)\"").matcher(geometryData);
         return matcher.find() ? matcher.group(1) : "geometry.mrpgnpc";
     }
 
