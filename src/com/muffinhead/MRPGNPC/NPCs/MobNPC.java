@@ -29,6 +29,7 @@ import com.muffinhead.MRPGNPC.MRPGNPC;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static java.lang.Boolean.getBoolean;
 import static java.lang.Integer.parseInt;
