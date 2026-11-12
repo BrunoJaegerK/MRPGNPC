@@ -40,6 +40,8 @@ import java.awt.im.InputContext;
 import java.nio.charset.StandardCharsets;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -175,8 +177,30 @@ public class NPC extends EntityHuman {
     public ConcurrentHashMap<String, Object> status = new ConcurrentHashMap<>();
 
 
+    private static CompoundTag ensureDefaultSkin(CompoundTag nbt) {
+        CompoundTag skin = nbt.contains("Skin") && nbt.get("Skin") instanceof CompoundTag
+                ? nbt.getCompound("Skin") : new CompoundTag();
+        if (!skin.contains("Data")) {
+            skin.putByteArray("Data", Base64.getDecoder().decode(Skin.STEVE_SKIN));
+            skin.putInt("SkinImageWidth", 64);
+            skin.putInt("SkinImageHeight", 64);
+        }
+        if (!skin.contains("GeometryName")) skin.putString("GeometryName", "geometry.humanoid.custom");
+        if (!skin.contains("GeometryData")) {
+            skin.putByteArray("GeometryData", Skin.STEVE_GEOMETRY.getBytes(StandardCharsets.UTF_8));
+        }
+        if (!skin.contains("SkinResourcePatch")) {
+            skin.putByteArray("SkinResourcePatch", "{\"geometry\":{\"default\":\"geometry.humanoid.custom\"}}"
+                    .getBytes(StandardCharsets.UTF_8));
+        }
+        if (!skin.contains("ModelId")) skin.putString("ModelId", "Standard_Custom");
+        if (!skin.contains("Transparent")) skin.putBoolean("Transparent", false);
+        if (!skin.contains("IsTrustedSkin")) skin.putBoolean("IsTrustedSkin", true);
+        return nbt.putCompound("Skin", skin);
+    }
+
     public NPC(FullChunk chunk, CompoundTag nbt) {
-        super(chunk, nbt.putCompound("Skin", new CompoundTag()));
+        super(chunk, ensureDefaultSkin(nbt));
         /*
         nbt
                 .putString("ModelID", this.skin.getSkinId())
