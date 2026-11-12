@@ -101,9 +101,10 @@ jobs:
             - "smoke:0:1:1"
           YAML
           cd NukkitPetteriM1Edition
-          timeout 60s java -Xms512m -Xmx1g -jar target/Nukkit-PM1E.jar < <(sleep 40; echo stop) > smoke-test.log 2>&1
+          timeout 60s java -Xms512m -Xmx1g -jar target/Nukkit-PM1E.jar < <(sleep 20; echo 'mrn mob spawn smoke 0 80 0 world 0 0'; sleep 10; echo stop) > smoke-test.log 2>&1
           cat smoke-test.log
           grep -q "MRPGNPC is enable" smoke-test.log
+          grep -q "Mob spawned" smoke-test.log
           if grep -E "NullPointerException|NoClassDefFoundError|ClassNotFoundException|Skipping invalid MRPGNPC spawn point" smoke-test.log; then
             echo "MRPGNPC smoke test reported a runtime error."
             exit 1
