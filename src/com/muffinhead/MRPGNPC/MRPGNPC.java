@@ -437,40 +437,52 @@ public class MRPGNPC extends PluginBase {
     }
     public void checkSkins() throws IOException {
         Path skinPath = getDataFolder().toPath().resolve("Skins");
-        File skinsFolder = new File(skinPath.toString());
-        if (!skinsFolder.exists()) {
-            skinsFolder.mkdirs();
+        File skinsFolder = skinPath.toFile();
+        if (!skinsFolder.exists() && !skinsFolder.mkdirs()) {
+            throw new IOException("Could not create skins directory: " + skinsFolder);
         }
-        for (File skinFolder : Objects.requireNonNull(skinsFolder.listFiles())) {
 
+        skins.clear();
+        File[] folders = skinsFolder.listFiles();
+        if (folders == null) return;
 
-            File geometry = skinFolder.toPath().resolve("geometry.json").toFile();
-            Config config = new Config(geometry.getPath());
-            Skin skin = null;
-            if (!config.getAll().containsKey("format_version")) {
-                if (config.getString("format_version").equals("1.10.0")){
-                    skin = newSkinNew(skinFolder.toPath());
-                }else {
-                    skin = newSkinOld(skinFolder.toPath());
-                }
-            }else{
+        for (File skinFolder : folders) {
+            if (!skinFolder.isDirectory()) continue;
+            Path geometryPath = skinFolder.toPath().resolve("geometry.json");
+            Path texturePath = skinFolder.toPath().resolve("skin.png");
+            if (!Files.isRegularFile(geometryPath) || !Files.isRegularFile(texturePath)) {
+                getServer().getLogger().warning("Skipping incomplete MRPGNPC skin folder: " + skinFolder.getName());
+                continue;
+            }
+
+            Skin skin;
+            Config geometryConfig = new Config(geometryPath.toString(), Config.JSON);
+            if (geometryConfig.getAll().containsKey("format_version")) {
                 skin = newSkinNew(skinFolder.toPath());
+            } else {
+                skin = newSkinOld(skinFolder.toPath());
+            }
+            if (skin == null || skin.getSkinData() == null) {
+                getServer().getLogger().warning("Could not load MRPGNPC skin: " + skinFolder.getName());
+                continue;
             }
 
             Path capePath = skinFolder.toPath().resolve("cape.png");
-            if (capePath.toFile().exists()) {
+            if (Files.isRegularFile(capePath)) {
                 try {
-                    BufferedImage capeData;
-                    capeData = ImageIO.read(capePath.toFile());
-                    skin.setCapeData(capeData);
-                    skin.setCapeId(skinFolder.getPath());
-                } catch (IOException e) {
-                    System.out.println("Cape" + skinFolder.getName() + "can't use");
+                    BufferedImage capeData = ImageIO.read(capePath.toFile());
+                    if (capeData != null) {
+                        skin.setCapeData(capeData);
+                        skin.setCapeId(skinFolder.getName());
+                    }
+                } catch (IOException exception) {
+                    getServer().getLogger().warning("Could not load cape for skin " + skinFolder.getName());
                 }
             }
             skins.put(skinFolder.getName(), skin);
         }
     }
+
     public Skin newSkinOld(Path path) throws IOException {
         Skin skin = new Skin();
         Path skinfolder = getDataFolder().toPath().resolve("Skins");
@@ -509,7 +521,7 @@ public class MRPGNPC extends PluginBase {
     public Skin newSkinNew(Path path) throws IOException {
         Skin skin = new Skin();
         skin.generateSkinId("mrpgnpc");
-        skin.setGeometryName(path.toString()+"/geometry.mrpgnpc");
+        skin.setGeometryName("geometry.mrpgnpc");
         skin.setSkinResourcePatch("{\"geometry\":{\"default\":\"geometry.mrpgnpc\"}}");
         skin.setGeometryData(new String(Files.readAllBytes(Paths.get(path.toString() + "/geometry.json"))));
         skin.setSkinData(ImageIO.read(Paths.get(path.toString() + "/skin.png").toFile()));
@@ -519,34 +531,34 @@ public class MRPGNPC extends PluginBase {
     public void checkWorldSpawnConfig(){
         worldSpawnConfig = new Config(getDataFolder().toPath().resolve("worldRandomSpawn.yml").toString(), Config.YAML);
     }
-    public void checkMobs(){
-        File mobsFolder = getMobFolder().toFile();
-        if (!mobsFolder.exists()) {
-            mobsFolder.mkdirs();
-        }
-        for (File mobfile : Objects.requireNonNull(mobsFolder.listFiles())) {
-            Config config = new Config(mobfile.getPath());
-            mobconfigs.put(mobfile.getName().replace(".yml", ""), config);
-        }
-    }
-    public void checkPoints(){
-        File pointsFolder = getPointFolder().toFile();
-        if (!pointsFolder.exists()) {
-            pointsFolder.mkdirs();
-        }
-        for (File pointfile : Objects.requireNonNull(pointsFolder.listFiles())) {
-            Config config = new Config(pointfile.getPath());
-            pointconfigs.put(pointfile.getName().replace(".yml", ""), config);
+    public void checkMobs() {
+        File folder = getMobFolder().toFile();
+        if (!folder.exists()) folder.mkdirs();
+        File[] files = folder.listFiles((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
+        if (files == null) return;
+        for (File file : files) {
+            mobconfigs.put(file.getName().substring(0, file.getName().length() - 4), new Config(file.getPath(), Config.YAML));
         }
     }
-    public void checkSkills(){
-        File skillsFolder = getSkillFolder().toFile();
-        if (!skillsFolder.exists()) {
-            skillsFolder.mkdirs();
-        }
-        for (File skillfile : Objects.requireNonNull(skillsFolder.listFiles())) {
-            Config config = new Config(skillfile.getPath());
-            skillconfigs.put(skillfile.getName().replace(".yml", ""), config);
+
+    public void checkPoints() {
+        File folder = getPointFolder().toFile();
+        if (!folder.exists()) folder.mkdirs();
+        File[] files = folder.listFiles((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
+        if (files == null) return;
+        for (File file : files) {
+            pointconfigs.put(file.getName().substring(0, file.getName().length() - 4), new Config(file.getPath(), Config.YAML));
         }
     }
+
+    public void checkSkills() {
+        File folder = getSkillFolder().toFile();
+        if (!folder.exists()) folder.mkdirs();
+        File[] files = folder.listFiles((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
+        if (files == null) return;
+        for (File file : files) {
+            skillconfigs.put(file.getName().substring(0, file.getName().length() - 4), new Config(file.getPath(), Config.YAML));
+        }
+    }
+
 }
