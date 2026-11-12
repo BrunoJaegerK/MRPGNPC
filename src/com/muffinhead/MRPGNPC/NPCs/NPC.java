@@ -34,13 +34,13 @@ import cn.nukkit.utils.Config;
 import com.muffinhead.MRPGNPC.MRPGNPC;
 
 import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import java.awt.im.InputContext;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
@@ -1537,24 +1537,22 @@ if (isDungeonMobFeature()) {
         dropItem(npc, item, null, false, 2);
     }
 
-    //js formula
+    // JavaScript formulas are evaluated by the bundled Nashorn engine.
     public double readEntityParameters(String s) {
-        ScriptEngineManager manager = new ScriptEngineManager();
-        ScriptEngine se = manager.getEngineByName("javascript");
-        s = recoverString(s);
+        String formula = recoverString(s);
         try {
-            Double d = Double.valueOf(se.eval(s).toString());
-            return d;
-        } catch (ScriptException e) {
-            System.out.println(s);
-            try {
-                System.out.println(se.eval(s).toString());
-            } catch (ScriptException scriptException) {
-                scriptException.printStackTrace();
+            ScriptEngine engine = new NashornScriptEngineFactory().getScriptEngine();
+            Object result = engine.eval(formula);
+            if (result instanceof Number) return ((Number) result).doubleValue();
+            return Double.parseDouble(String.valueOf(result));
+        } catch (ScriptException | RuntimeException exception) {
+            MRPGNPC plugin = MRPGNPC.mrpgnpc;
+            if (plugin != null) {
+                plugin.getServer().getLogger().warning(
+                        "Invalid MRPGNPC formula '" + formula + "': " + exception.getMessage());
             }
-            System.out.println("算式错误");
+            return 0;
         }
-        return 0;
     }
 
     public String recoverString(String s) {
