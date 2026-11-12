@@ -51,6 +51,21 @@ jobs:
           mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/Mobs
           mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/Points
           cp target/MRPGNPC-1.2.6-PM1E.jar NukkitPetteriM1Edition/plugins/MRPGNPC.jar
+          cat > /tmp/ScriptEngineSmoke.java <<'JAVA'
+          import javax.script.ScriptEngine;
+          import javax.script.ScriptEngineManager;
+          public class ScriptEngineSmoke {
+              public static void main(String[] args) throws Exception {
+                  ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
+                  if (engine == null || !"2".equals(String.valueOf(engine.eval("1 + 1")))) {
+                      throw new IllegalStateException("Nashorn JavaScript engine is unavailable");
+                  }
+                  System.out.println("Nashorn smoke test passed");
+              }
+          }
+          JAVA
+          javac -cp target/MRPGNPC-1.2.6-PM1E.jar /tmp/ScriptEngineSmoke.java
+          java -cp target/MRPGNPC-1.2.6-PM1E.jar:/tmp ScriptEngineSmoke
           cat > NukkitPetteriM1Edition/plugins/MRPGNPC/Mobs/smoke.yml <<'YAML'
           DisplayName: "MRPGNPC smoke test"
           MaxHealth: 40

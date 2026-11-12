@@ -28,7 +28,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MobNPCBeAttack implements Listener {
-    @EventHandler(priority = EventPriority.MONITOR)
+    @EventHandler(priority = EventPriority.HIGH)
     public void onDamaged(EntityDamageEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof MobNPC) {
@@ -286,7 +286,7 @@ public class MobNPCBeAttack implements Listener {
             Level level = player.getLevel();
             Entity entity = level.getEntity(((EntityEventPacket) packet).eid);
             if (entity instanceof MobNPC){
-                if (((MobNPC) entity).isDamagerFriendly(entity)){
+                if (((MobNPC) entity).isDamagerFriendly(player)){
                     event.setCancelled();
                 }
             }
@@ -296,9 +296,10 @@ public class MobNPCBeAttack implements Listener {
     @EventHandler
     public void onDamage(EntityDamageByChildEntityEvent event){
         Entity bullet = event.getChild();
-        if (bullet instanceof Bullet){
-            event.setKnockBack(((Bullet) bullet).knockback);
-            event.setDamage(((Bullet) bullet).damage);
+        if (bullet instanceof Bullet) {
+            Bullet projectile = (Bullet) bullet;
+            if (projectile.damage > 0) event.setDamage(projectile.damage);
+            if (projectile.knockback > 0) event.setKnockBack(projectile.knockback);
         }
     }
     @EventHandler

@@ -76,7 +76,7 @@ public class MRPGNPC extends PluginBase {
         for (Level level :getServer().getLevels().values()){
             for (Entity entity:level.getEntities()){
                 if (entity instanceof MobNPC){
-                    entity.kill();
+                    entity.close();
                 }
             }
         }
