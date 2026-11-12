@@ -65,8 +65,8 @@ jobs:
               }
           }
           JAVA
-          javac -cp target/MRPGNPC-1.2.6-PM1E.jar /tmp/ScriptEngineSmoke.java
-          java -cp target/MRPGNPC-1.2.6-PM1E.jar:/tmp ScriptEngineSmoke
+          javac -cp target/MRPGNPC-1.2.7-PM1E.jar /tmp/ScriptEngineSmoke.java
+          java -cp target/MRPGNPC-1.2.7-PM1E.jar:/tmp ScriptEngineSmoke
           cat > NukkitPetteriM1Edition/plugins/MRPGNPC/Mobs/smoke.yml <<'YAML'
           DisplayName: "MRPGNPC smoke test"
           MaxHealth: 40
