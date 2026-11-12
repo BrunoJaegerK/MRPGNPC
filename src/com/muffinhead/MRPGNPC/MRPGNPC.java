@@ -100,10 +100,12 @@ public class MRPGNPC extends PluginBase {
             case "clear": {
                 if (args.length < 2) return false;
                 String type = args[1].toLowerCase(Locale.ROOT);
-                if (!type.equals("mobs") && !type.equals("drops")) return false;
+                if (!type.equals("mobs") && !type.equals("npcs") && !type.equals("drops")) return false;
                 for (Level level : getServer().getLevels().values()) {
                     for (Entity entity : level.getEntities()) {
                         if (type.equals("mobs") && entity instanceof MobNPC) {
+                            entity.close();
+                        } else if (type.equals("npcs") && entity instanceof DisplayNPC) {
                             entity.close();
                         } else if (type.equals("drops") && entity instanceof EntityItem) {
                             entity.close();
@@ -112,6 +114,8 @@ public class MRPGNPC extends PluginBase {
                 }
                 sender.sendMessage(type.equals("mobs")
                         ? "§aAll MRPGNPC mobs were cleared."
+                        : type.equals("npcs")
+                        ? "§aAll decorative NPCs were cleared."
                         : "§aAll dropped items were cleared.");
                 return true;
             }
@@ -443,6 +447,11 @@ public class MRPGNPC extends PluginBase {
         npc.setCollidable(config.getBoolean("Collidable", false));
 
         String skinName = config.getString("Skin", "").trim();
+        if (modelType.equals("BLOCK") && skinName.isEmpty()) {
+            sender.sendMessage("§cModelType BLOCK requires a custom Skin from the Skins folder.");
+            npc.close();
+            return null;
+        }
         if (!skinName.isEmpty()) {
             Skin skin = skins.get(skinName);
             if (skin == null) {
