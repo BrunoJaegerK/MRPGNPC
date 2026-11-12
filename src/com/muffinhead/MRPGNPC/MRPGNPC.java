@@ -512,6 +512,7 @@ public class MRPGNPC extends PluginBase {
                 System.out.println("皮肤模型出错");
             }
             skin.setGeometryName("geometry.mrpgnpc");
+            skin.setSkinResourcePatch("{\\"geometry\\":{\\"default\\":\\"geometry.mrpgnpc\\"}}");
             skin.setSkinId(skinthings.toFile().getName());
         }
         return skin;
