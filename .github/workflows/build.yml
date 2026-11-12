@@ -114,7 +114,7 @@ jobs:
           NameTagVisible: true
           NameTagAlwaysVisible: true
           Animation: ""
-          AnimationInterval: 40
+          AnimationInterval: 0
           YAML
           cd NukkitPetteriM1Edition
           timeout 60s java -Xms512m -Xmx1g -jar target/Nukkit-PM1E.jar < <(sleep 20; echo 'mrn mob spawn smoke 0 80 0 world 0 0'; echo 'mrn npc spawn display-smoke 2 80 0 world 0 0'; sleep 10; echo stop) > smoke-test.log 2>&1
