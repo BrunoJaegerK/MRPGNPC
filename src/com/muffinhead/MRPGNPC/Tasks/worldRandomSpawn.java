@@ -112,7 +112,7 @@ public class worldRandomSpawn extends Task {
             if (!level.loadChunk(chunkX, chunkZ, true) || !level.isChunkLoaded(chunkX, chunkZ)) continue;
 
             int y = level.getHighestBlockAt(x, z) + 1;
-            if (y <= level.getMinHeight() || y + 1 >= level.getMaxHeight()) continue;
+            if (y <= level.getMinBlockY() || y + 1 >= level.getMaxBlockY()) continue;
 
             Block ground = level.getBlock(new Vector3(x, y - 1, z));
             Block feet = level.getBlock(new Vector3(x, y, z));
