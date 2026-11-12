@@ -59,6 +59,12 @@
                         <goals><goal>shade</goal></goals>
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <relocations>
+                                <relocation>
+                                    <pattern>org.objectweb.asm</pattern>
+                                    <shadedPattern>com.muffinhead.mrpgnpc.internal.asm</shadedPattern>
+                                </relocation>
+                            </relocations>
                             <minimizeJar>false</minimizeJar>
                             <filters>
                                 <filter>
