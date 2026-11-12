@@ -32,6 +32,8 @@ public class MobNPCBeAttack implements Listener {
     public void onDamaged(EntityDamageEvent event) {
         Entity entity = event.getEntity();
         if (entity instanceof MobNPC) {
+            // Respect cancellations made by other plugins before changing damage, shields or threat pools.
+            if (event.isCancelled()) return;
             //particle
             if (!event.isCancelled()){
                 if (event instanceof EntityDamageByEntityEvent) {
@@ -60,6 +62,8 @@ public class MobNPCBeAttack implements Listener {
                 //defense
                 //checkbedamagedcd
                 onCheckCanEntityAttack((EntityDamageByEntityEvent) event);
+                // A rejected hit must not consume shield points or update combat threat.
+                if (event.isCancelled()) return;
                 //checkbedamagedcd
 
                 //shield
