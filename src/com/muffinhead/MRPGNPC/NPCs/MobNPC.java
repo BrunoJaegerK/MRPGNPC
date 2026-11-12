@@ -234,7 +234,7 @@ public class MobNPC extends NPC {
                 }
                 try {
                     int probability = Integer.parseInt(parts[0]);
-                    if (probability <= 0 || probability > 100) continue;
+                    if (probability <= 0) continue;
                     if (parts[1].contains(type) && ThreadLocalRandom.current().nextInt(100) + 1 <= probability) {
                         finalskills.add(parts[0] + ":" + parts[1] + ":" + parts[2]);
                     }
