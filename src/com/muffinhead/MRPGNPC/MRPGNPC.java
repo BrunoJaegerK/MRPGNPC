@@ -357,7 +357,7 @@ public class MRPGNPC extends PluginBase {
         config.set("NameTagVisible", false);
         config.set("NameTagAlwaysVisible", false);
         config.set("Animation", "");
-        config.set("AnimationInterval", 40);
+        config.set("AnimationInterval", 0); // 0 plays once when each client receives the NPC
         return config;
     }
 
