@@ -16,6 +16,7 @@ import cn.nukkit.nbt.tag.CompoundTag;
 import cn.nukkit.plugin.PluginBase;
 import cn.nukkit.utils.Config;
 import com.muffinhead.MRPGNPC.Events.MobNPCBeAttack;
+import com.muffinhead.MRPGNPC.NPCs.DisplayNPC;
 import com.muffinhead.MRPGNPC.NPCs.MobNPC;
 import com.muffinhead.MRPGNPC.NPCs.NPC;
 import com.muffinhead.MRPGNPC.Tasks.AutoSpawn;
@@ -31,6 +32,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static cn.nukkit.utils.Utils.readFile;
 
@@ -40,6 +43,7 @@ public class MRPGNPC extends PluginBase {
     public static ConcurrentHashMap<String, Config> mobconfigs = new ConcurrentHashMap<String, Config>();
     public static ConcurrentHashMap<String, Config> pointconfigs = new ConcurrentHashMap<String, Config>();
     public static ConcurrentHashMap<String, Config> skillconfigs = new ConcurrentHashMap<String, Config>();
+    public static ConcurrentHashMap<String, Config> displayNpcConfigs = new ConcurrentHashMap<>();
     public static Map<String, CompoundTag> skinTags = new HashMap<>();
     public static ConcurrentHashMap<String, Skin> skins = new ConcurrentHashMap<>();
     public static Config worldSpawnConfig;
@@ -50,6 +54,7 @@ public class MRPGNPC extends PluginBase {
     @Override
     public void onLoad() {
         Entity.registerEntity("MobNPC",MobNPC.class);
+        Entity.registerEntity("DisplayNPC", DisplayNPC.class);
     }
 
     @Override
@@ -60,6 +65,7 @@ public class MRPGNPC extends PluginBase {
         checkMobs();
         checkPoints();
         checkSkills();
+        checkDisplayNPCs();
         checkWorldSpawnConfig();
         getServer().getScheduler().scheduleDelayedRepeatingTask(new AutoSpawn(),1,1);
         getServer().getScheduler().scheduleDelayedRepeatingTask(new worldRandomSpawn(),20,20);
@@ -75,7 +81,7 @@ public class MRPGNPC extends PluginBase {
     public void onDisable() {
         for (Level level :getServer().getLevels().values()){
             for (Entity entity:level.getEntities()){
-                if (entity instanceof MobNPC){
+                if (entity instanceof MobNPC || entity instanceof DisplayNPC) {
                     entity.close();
                 }
             }
@@ -108,6 +114,69 @@ public class MRPGNPC extends PluginBase {
                         ? "§aAll MRPGNPC mobs were cleared."
                         : "§aAll dropped items were cleared.");
                 return true;
+            }
+            case "npc": {
+                if (args.length < 2) return false;
+                switch (args[1].toLowerCase(Locale.ROOT)) {
+                    case "create": {
+                        if (args.length < 3 || !isValidConfigId(args[2])) {
+                            sender.sendMessage("§cUsage: /mrn npc create <id> (letters, numbers, _ and - only)");
+                            return true;
+                        }
+                        File file = getDisplayNPCFolder().resolve(args[2] + ".yml").toFile();
+                        if (file.exists()) {
+                            sender.sendMessage("§cThis NPC file already exists.");
+                            return true;
+                        }
+                        Config config = createDisplayNPCConfig(file.getPath());
+                        config.save();
+                        displayNpcConfigs.put(args[2], config);
+                        sender.sendMessage("§aDisplay NPC configuration created. Edit it, then use /mrn npc spawn " + args[2] + ".");
+                        return true;
+                    }
+                    case "delete": {
+                        if (args.length < 3 || !isValidConfigId(args[2])) return false;
+                        File file = getDisplayNPCFolder().resolve(args[2] + ".yml").toFile();
+                        if (!file.exists()) {
+                            sender.sendMessage("§cDisplay NPC configuration not found.");
+                            return true;
+                        }
+                        if (!file.delete()) {
+                            sender.sendMessage("§cCould not delete the display NPC configuration.");
+                            return true;
+                        }
+                        displayNpcConfigs.remove(args[2]);
+                        for (Level level : getServer().getLevels().values()) {
+                            for (Entity entity : level.getEntities()) {
+                                if (entity instanceof DisplayNPC
+                                        && ((DisplayNPC) entity).getConfigId().equalsIgnoreCase(args[2])) {
+                                    entity.close();
+                                }
+                            }
+                        }
+                        sender.sendMessage("§aDisplay NPC configuration and its active instances were removed.");
+                        return true;
+                    }
+                    case "spawn": {
+                        DisplayNPC npc = spawnDisplayNPC(sender, args);
+                        if (npc != null) {
+                            npc.spawnToAll();
+                            sender.sendMessage("§aDisplay NPC spawned.");
+                        }
+                        return true;
+                    }
+                    case "list": {
+                        if (displayNpcConfigs.isEmpty()) {
+                            sender.sendMessage("§eNo display NPC configurations found.");
+                        } else {
+                            sender.sendMessage("§aDisplay NPCs: §f" + String.join(", ", displayNpcConfigs.keySet()));
+                        }
+                        return true;
+                    }
+                    default:
+                        sender.sendMessage("§eUsage: /mrn npc <create|spawn|delete|list> ...");
+                        return true;
+                }
             }
             case "mob": {
                 if (args.length < 2) return false;
@@ -213,9 +282,11 @@ public class MRPGNPC extends PluginBase {
                 mobconfigs.clear();
                 pointconfigs.clear();
                 skillconfigs.clear();
+                displayNpcConfigs.clear();
                 checkMobs();
                 checkPoints();
                 checkSkills();
+                checkDisplayNPCs();
                 checkWorldSpawnConfig();
                 try {
                     checkSkins();
@@ -258,6 +329,137 @@ public class MRPGNPC extends PluginBase {
 
     public Path getSkillFolder() {
         return getDataFolder().toPath().resolve("Skills");
+    }
+
+    public Path getDisplayNPCFolder() {
+        return getDataFolder().toPath().resolve("NPCs");
+    }
+
+    private boolean isValidConfigId(String id) {
+        return id != null && id.matches("[A-Za-z0-9_-]{1,48}");
+    }
+
+    public Config createDisplayNPCConfig(String configPath) {
+        Config config = new Config(configPath, Config.YAML);
+        config.set("DisplayName", "Display NPC");
+        config.set("ModelType", "PLAYER"); // PLAYER or BLOCK (custom Bedrock geometry)
+        config.set("Skin", "");
+        config.set("Scale", 1.0);
+        config.set("HitboxWidth", 0.6);
+        config.set("HitboxHeight", 1.8);
+        config.set("Immobile", true);
+        config.set("Collidable", false);
+        config.set("NameTag", "");
+        config.set("NameTagVisible", false);
+        config.set("NameTagAlwaysVisible", false);
+        config.set("Animation", "");
+        config.set("AnimationInterval", 40);
+        return config;
+    }
+
+    public void checkDisplayNPCs() {
+        File folder = getDisplayNPCFolder().toFile();
+        if (!folder.exists() && !folder.mkdirs()) {
+            getServer().getLogger().warning("Could not create MRPGNPC/NPCs folder.");
+            return;
+        }
+        File[] files = folder.listFiles((dir, name) -> name.toLowerCase(Locale.ROOT).endsWith(".yml"));
+        if (files == null) return;
+        for (File file : files) {
+            String id = file.getName().substring(0, file.getName().length() - 4);
+            if (isValidConfigId(id)) {
+                displayNpcConfigs.put(id, new Config(file.getPath(), Config.YAML));
+            } else {
+                getServer().getLogger().warning("Ignoring display NPC config with invalid file name: " + file.getName());
+            }
+        }
+    }
+
+    private DisplayNPC spawnDisplayNPC(CommandSender sender, String[] args) {
+        if (args.length < 3 || !isValidConfigId(args[2])) {
+            sender.sendMessage("§cUsage: /mrn npc spawn <id> [x y z world yaw pitch]");
+            return null;
+        }
+        Config config = displayNpcConfigs.get(args[2]);
+        if (config == null) {
+            sender.sendMessage("§cDisplay NPC configuration not found: " + args[2]);
+            return null;
+        }
+
+        Location location;
+        if (args.length == 3) {
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("§cConsole spawning requires x y z world yaw pitch.");
+                return null;
+            }
+            Player player = (Player) sender;
+            Vector3 target = player.getTargetBlock(3);
+            if (target == null) target = player.getLocation();
+            location = new Location(target.x, target.y, target.z, player.getYaw(), player.getPitch(), player.getLevel());
+        } else {
+            if (args.length != 9) {
+                sender.sendMessage("§cUsage: /mrn npc spawn <id> [x y z world yaw pitch]");
+                return null;
+            }
+            String worldName = args[6];
+            if (!getServer().isLevelLoaded(worldName) && !getServer().loadLevel(worldName)) {
+                sender.sendMessage("§cWorld not found: " + worldName);
+                return null;
+            }
+            Level level = getServer().getLevelByName(worldName);
+            if (level == null) {
+                sender.sendMessage("§cWorld not found: " + worldName);
+                return null;
+            }
+            try {
+                location = new Location(Double.parseDouble(args[3]), Double.parseDouble(args[4]),
+                        Double.parseDouble(args[5]), Double.parseDouble(args[7]),
+                        Double.parseDouble(args[8]), level);
+            } catch (NumberFormatException exception) {
+                sender.sendMessage("§cInvalid NPC coordinates or rotation.");
+                return null;
+            }
+        }
+
+        Level level = location.getLevel();
+        if (level == null || !level.loadChunk(location.getChunkX(), location.getChunkZ(), true)
+                || location.getChunk() == null) {
+            sender.sendMessage("§cCould not load the display NPC spawn chunk.");
+            return null;
+        }
+
+        DisplayNPC npc = new DisplayNPC(location.getChunk(), DisplayNPC.getDefaultNBT(location));
+        String modelType = config.getString("ModelType", "PLAYER").trim().toUpperCase(Locale.ROOT);
+        if (!modelType.equals("PLAYER") && !modelType.equals("BLOCK")) {
+            getServer().getLogger().warning("Invalid ModelType '" + modelType + "' in NPC " + args[2] + "; using PLAYER.");
+            modelType = "PLAYER";
+        }
+        npc.setScale((float) Math.max(0.01, Math.min(16.0, config.getDouble("Scale", 1.0))));
+        npc.configure(args[2], config.getString("Animation", ""),
+                Math.max(0, config.getInt("AnimationInterval", 40)),
+                (float) config.getDouble("HitboxWidth", modelType.equals("BLOCK") ? 0.8 : 0.6),
+                (float) config.getDouble("HitboxHeight", modelType.equals("BLOCK") ? 0.8 : 1.8));
+        npc.setImmobile(config.getBoolean("Immobile", true));
+        npc.setCollidable(config.getBoolean("Collidable", false));
+
+        String skinName = config.getString("Skin", "").trim();
+        if (!skinName.isEmpty()) {
+            Skin skin = skins.get(skinName);
+            if (skin == null) {
+                getServer().getLogger().warning("Display NPC '" + args[2] + "' references missing skin '" + skinName + "'.");
+                sender.sendMessage("§cSkin not found: " + skinName + ". NPC was not spawned.");
+                npc.close();
+                return null;
+            }
+            npc.setSkin(skin);
+            npc.setSkinname(skinName);
+        }
+
+        String nameTag = config.getString("NameTag", config.getString("DisplayName", ""));
+        npc.setNameTag(nameTag);
+        npc.setNameTagVisible(config.getBoolean("NameTagVisible", !nameTag.isEmpty()));
+        npc.setNameTagAlwaysVisible(config.getBoolean("NameTagAlwaysVisible", false));
+        return npc;
     }
 
     public Config createMobConfig(String configPath) {
@@ -490,6 +692,19 @@ public class MRPGNPC extends PluginBase {
                     }
                 } catch (IOException exception) {
                     getServer().getLogger().warning("Could not load cape for skin " + skinFolder.getName());
+                }
+            }
+            Path animationPath = skinFolder.toPath().resolve("animations.json");
+            if (!Files.isRegularFile(animationPath)) {
+                animationPath = skinFolder.toPath().resolve("animation.json");
+            }
+            if (Files.isRegularFile(animationPath)) {
+                try {
+                    String animationData = Files.readString(animationPath, StandardCharsets.UTF_8);
+                    if (!animationData.trim().isEmpty()) skin.setAnimationData(animationData);
+                } catch (IOException exception) {
+                    getServer().getLogger().warning("Could not load animation data for skin " + skinFolder.getName()
+                            + ": " + exception.getMessage());
                 }
             }
             skins.put(skinFolder.getName(), skin);
