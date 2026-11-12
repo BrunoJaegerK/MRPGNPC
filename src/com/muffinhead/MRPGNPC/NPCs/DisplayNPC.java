@@ -1,6 +1,9 @@
 package com.muffinhead.MRPGNPC.NPCs;
 
+import cn.nukkit.Player;
 import cn.nukkit.event.entity.EntityDamageEvent;
+import cn.nukkit.network.protocol.AnimateEntityPacket;
+import cn.nukkit.network.protocol.ProtocolInfo;
 import cn.nukkit.level.format.FullChunk;
 import cn.nukkit.nbt.tag.CompoundTag;
 
@@ -97,10 +100,15 @@ public class DisplayNPC extends NPC {
     }
 
     @Override
-    public void spawnToAll() {
-        super.spawnToAll();
-        if (!this.animation.isEmpty()) {
-            playAnimation(this.animation);
+    public void spawnTo(Player player) {
+        boolean alreadySpawned = this.hasSpawned.containsKey(player.getLoaderId());
+        super.spawnTo(player);
+        if (!alreadySpawned && this.hasSpawned.containsKey(player.getLoaderId())
+                && !this.animation.isEmpty() && player.protocol >= ProtocolInfo.v1_16_100) {
+            AnimateEntityPacket packet = new AnimateEntityPacket();
+            packet.animation = this.animation;
+            packet.runtimeEntityIds.add(this.getId());
+            player.dataPacket(packet);
         }
     }
 }
