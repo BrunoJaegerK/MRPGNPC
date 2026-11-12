@@ -84,160 +84,168 @@ public class MRPGNPC extends PluginBase {
     //command part
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (command.getName().equalsIgnoreCase("mrn")) {
-            if (args.length <= 0) return false;
-            switch (args[0]) {
-                case "clear":{
-                    if (args.length <= 1) return false;
-                    switch (args[1]) {
-                        case "mobs":{
-                            for (Level level:getServer().getLevels().values()){
-                                for (Entity entity:level.getEntities()){
-                                    if (entity instanceof MobNPC) {
-                                        entity.kill();
-                                    }
-                                }
-                            }
-                        }
-                        case "drops": {
-                            for (Level level:getServer().getLevels().values()){
-                                for (Entity entity:level.getEntities()){
-                                    if (entity instanceof EntityItem) {
-                                        entity.kill();
-                                    }
-                                }
-                            }
+        if (!command.getName().equalsIgnoreCase("mrn")) {
+            return super.onCommand(sender, command, label, args);
+        }
+        if (args.length == 0) return false;
+
+        switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "clear": {
+                if (args.length < 2) return false;
+                String type = args[1].toLowerCase(Locale.ROOT);
+                if (!type.equals("mobs") && !type.equals("drops")) return false;
+                for (Level level : getServer().getLevels().values()) {
+                    for (Entity entity : level.getEntities()) {
+                        if (type.equals("mobs") && entity instanceof MobNPC) {
+                            entity.close();
+                        } else if (type.equals("drops") && entity instanceof EntityItem) {
+                            entity.close();
                         }
                     }
                 }
-                case "mob": {
-                    if (args.length <= 1) return false;
-                    switch (args[1]) {
-                        case "create": {
-                            if (args.length >= 3) {
-                                File mobFile = getMobFolder().resolve(args[2] + ".yml").toFile();
-                                if (mobFile.exists()) {
-                                    sender.sendMessage("§cThis mobfile is already exist!");
-                                    return true;
-                                }
-                                Config config = createMobConfig(mobFile.getPath());
-                                config.save();
-                                sender.sendMessage("§aThe new mobfile was created successfully!");
-                                return true;
-                            }
-                        }
-                        case "delete": {
-                            if (args.length >= 3) {
-                                File mobFile = getMobFolder().resolve(args[2] + ".yml").toFile();
-                                if (!mobFile.exists()) {
-                                    sender.sendMessage("§cCan't find the file");
-
-                                } else {
-                                    mobFile.deleteOnExit();
-                                    sender.sendMessage("§aThe mobfile was deleted successfully!");
-                                }
-                                return true;
-                            }
-                        }
-                        case "spawn": {
-                            NPC npc = spawnNPC(sender, args);
-                            if (npc!=null){
-                                npc.spawnToAll();
-                            }
+                sender.sendMessage(type.equals("mobs")
+                        ? "§aAll MRPGNPC mobs were cleared."
+                        : "§aAll dropped items were cleared.");
+                return true;
+            }
+            case "mob": {
+                if (args.length < 2) return false;
+                switch (args[1].toLowerCase(Locale.ROOT)) {
+                    case "create": {
+                        if (args.length < 3) return false;
+                        File file = getMobFolder().resolve(args[2] + ".yml").toFile();
+                        if (file.exists()) {
+                            sender.sendMessage("§cThis mob file already exists.");
                             return true;
                         }
-                    }
-                    return false;
-                }
-                case "test": {
-                    if (sender instanceof Player) {
-                        Location spawnLocation = ((Player) sender).getLocation();
-                        String mobfile = "测试A号";
-                        String mobFeature = "MDungeon" + ":" + mobfile + ":" + "" + ":" + 0;
-                        MobNPC npc = MRPGNPC.mrpgnpc.spawnNPC(Server.getInstance().getConsoleSender(), mobfile, spawnLocation, mobFeature);
-                        npc.getActiveattackcreature().add("MDungeon");
-                        npc.getUnattractivecreature().add("NotMDungeon");
-                        npc.spawnToAll();
+                        Config config = createMobConfig(file.getPath());
+                        config.save();
+                        mobconfigs.put(args[2], config);
+                        sender.sendMessage("§aMob file created successfully.");
                         return true;
                     }
-                }
-                case "point": {
-                    if (args.length <= 1) return false;
-                    switch (args[1]) {
-                        case "create": {
-                            if (sender instanceof Player) {
-                                if (args.length >= 3) {
-                                    File pointFile = getPointFolder().resolve(args[2] + ".yml").toFile();
-                                    if (pointFile.exists()) {
-                                        sender.sendMessage("§cThis pointfile is already exist!");
-                                        return true;
-                                    }
-                                    Config config = createPointConfig(pointFile.getPath(), ((Player) sender));
-                                    config.save();
-                                    sender.sendMessage("§aThe new pointfile was created successfully!");
-                                    return true;
-                                }
-                            }
+                    case "delete": {
+                        if (args.length < 3) return false;
+                        File file = getMobFolder().resolve(args[2] + ".yml").toFile();
+                        if (!file.exists()) {
+                            sender.sendMessage("§cMob file not found.");
+                            return true;
                         }
-                        case "delete": {
-                            if (args.length >= 3) {
-                                File pointFile = getPointFolder().resolve(args[2] + ".yml").toFile();
-                                if (!pointFile.exists()) {
-                                    sender.sendMessage("§cCan't find the file");
-                                } else {
-                                    pointFile.deleteOnExit();
-                                    sender.sendMessage("§aThe pointfile was deleted successfully!");
-                                }
-                                return true;
-                            }
+                        if (file.delete()) {
+                            mobconfigs.remove(args[2]);
+                            sender.sendMessage("§aMob file deleted successfully.");
+                        } else {
+                            sender.sendMessage("§cCould not delete the mob file.");
                         }
+                        return true;
                     }
-                }
-                case "reload":{
-                    checkMobs();
-                    checkPoints();
-                    checkSkills();
-                    for (Level level:getServer().getLevels().values()){
-                        for (Entity entity:level.getEntities()){
-                            if (!(entity instanceof Player)){
-                                entity.close();
-                            }
+                    case "spawn": {
+                        if (args.length != 3 && args.length < 9) {
+                            sender.sendMessage("§cUsage: /mrn mob spawn <mob> [x y z world yaw pitch]");
+                            return true;
                         }
-                    }
-                    //getServer().getScheduler().scheduleDelayedRepeatingTask(new AutoSpawn(),1,1);
-                    try {
-                        checkSkins();
-                    } catch (IOException e) {
-                        getServer().getLogger().alert("Skins check wrong！！");
-                    }
-                    sender.sendMessage("§aThe mob&point files was reload successfully!");
-                    return true;
-                }
-
-                //put on the back burner
-                case "skill": {
-                    switch (args[1]){
-                        case "create":{
-                            if (args.length >= 3) {
-                                File skillFile = getSkillFolder().resolve(args[2] + ".yml").toFile();
-                                if (skillFile.exists()) {
-                                    sender.sendMessage("§cThis skillfile is already exist!");
-                                    return true;
-                                }
-                                Config config = createSkillConfig(skillFile.getPath());
-                                config.save();
-                                sender.sendMessage("§aThe new skillfile was created successfully!");
-                                return true;
-                            }
+                        MobNPC npc = spawnNPC(sender, args);
+                        if (npc != null) {
+                            npc.spawnToAll();
+                            sender.sendMessage("§aMob spawned.");
                         }
+                        return true;
                     }
+                    default:
+                        return false;
                 }
             }
+            case "point": {
+                if (args.length < 2) return false;
+                switch (args[1].toLowerCase(Locale.ROOT)) {
+                    case "create": {
+                        if (!(sender instanceof Player) || args.length < 3) return false;
+                        File file = getPointFolder().resolve(args[2] + ".yml").toFile();
+                        if (file.exists()) {
+                            sender.sendMessage("§cThis point file already exists.");
+                            return true;
+                        }
+                        Config config = createPointConfig(file.getPath(), (Player) sender);
+                        config.save();
+                        pointconfigs.put(args[2], config);
+                        sender.sendMessage("§aPoint file created successfully.");
+                        return true;
+                    }
+                    case "delete": {
+                        if (args.length < 3) return false;
+                        File file = getPointFolder().resolve(args[2] + ".yml").toFile();
+                        if (!file.exists()) {
+                            sender.sendMessage("§cPoint file not found.");
+                            return true;
+                        }
+                        if (file.delete()) {
+                            pointconfigs.remove(args[2]);
+                            sender.sendMessage("§aPoint file deleted successfully.");
+                        } else {
+                            sender.sendMessage("§cCould not delete the point file.");
+                        }
+                        return true;
+                    }
+                    default:
+                        return false;
+                }
+            }
+            case "skill": {
+                if (args.length < 3 || !args[1].equalsIgnoreCase("create")) return false;
+                File file = getSkillFolder().resolve(args[2] + ".yml").toFile();
+                if (file.exists()) {
+                    sender.sendMessage("§cThis skill file already exists.");
+                    return true;
+                }
+                Config config = createSkillConfig(file.getPath());
+                config.save();
+                skillconfigs.put(args[2], config);
+                sender.sendMessage("§aSkill file created successfully.");
+                return true;
+            }
+            case "reload": {
+                for (Level level : getServer().getLevels().values()) {
+                    for (Entity entity : level.getEntities()) {
+                        if (entity instanceof MobNPC) entity.close();
+                    }
+                }
+                mobconfigs.clear();
+                pointconfigs.clear();
+                skillconfigs.clear();
+                checkMobs();
+                checkPoints();
+                checkSkills();
+                checkWorldSpawnConfig();
+                try {
+                    checkSkins();
+                } catch (IOException e) {
+                    getServer().getLogger().error("Could not reload MRPGNPC skins", e);
+                    sender.sendMessage("§cConfigs reloaded, but one or more skins could not be loaded.");
+                    return true;
+                }
+                sender.sendMessage("§aMRPGNPC configs reloaded. Other mobs and dropped items were left untouched.");
+                return true;
+            }
+            case "test": {
+                if (!(sender instanceof Player)) return false;
+                Player player = (Player) sender;
+                String mobfile = "测试A号";
+                Location location = player.getLocation();
+                MobNPC npc = spawnNPC(getServer().getConsoleSender(), mobfile, location,
+                        "MDungeon:" + mobfile + "::0");
+                if (npc == null) {
+                    sender.sendMessage("§cTest mob configuration was not found.");
+                    return true;
+                }
+                npc.getActiveattackcreature().add("MDungeon");
+                npc.getUnattractivecreature().add("NotMDungeon");
+                npc.spawnToAll();
+                return true;
+            }
+            default:
+                return false;
         }
-        return super.onCommand(sender, command, label, args);
     }
-//command part
-
 
     public Path getMobFolder() {
         return getDataFolder().toPath().resolve("Mobs");
@@ -266,10 +274,9 @@ public class MRPGNPC extends PluginBase {
         config.set("AttackRange", 1.2);
         config.set("HitRange",0.15);
         config.set("HateRange", 15.0);
-        config.set("HitRange",0.15);
         config.set("NoHatesHeal", "200:1.0");
         config.set("CanBeKnockBack", false);
-        config.set("BoudningBox",true);
+        config.set("BoundingBox",true);
         config.set("DeathCommands", new ArrayList<>());
         config.set("Skin", "GreenCross");
         config.set("ItemInHand", "267:0");
