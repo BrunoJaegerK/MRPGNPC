@@ -67,30 +67,31 @@ public class Bullet extends EntityProjectile {
     }
     @Override
     public void onCollideWithEntity(Entity entity) {
-        ProjectileHitEvent e = new ProjectileHitEvent(this, MovingObjectPosition.fromEntity(entity));
-        this.server.getPluginManager().callEvent(e);
-        if (!e.isCancelled()) {
-            float damage = (float) this.getResultDamage();
-            Object ev;
-            if (this.shootingEntity == null) {
-                ev = new EntityDamageByEntityEvent(this, entity, EntityDamageEvent.DamageCause.PROJECTILE, damage);
-            } else {
-                ev = new EntityDamageByChildEntityEvent(this.shootingEntity, this, entity, EntityDamageEvent.DamageCause.PROJECTILE, damage);
-            }
+        ProjectileHitEvent hitEvent = new ProjectileHitEvent(this, MovingObjectPosition.fromEntity(entity));
+        this.server.getPluginManager().callEvent(hitEvent);
+        if (hitEvent.isCancelled()) return;
 
-            if (entity.attack((EntityDamageEvent) ev)) {
-                if (this.fireTicks > 0) {
-                    EntityCombustByEntityEvent event = new EntityCombustByEntityEvent(this, entity, 5);
-                    this.server.getPluginManager().callEvent((Event) ev);
-                    if (!event.isCancelled()) {
-                        entity.setOnFire(event.getDuration());
-                    }
-                }
-            }
-            if (this.closeOnCollide) {
-                this.close();
+        float hitDamage = this.damage > 0 ? this.damage : (float) this.getResultDamage();
+        EntityDamageEvent damageEvent;
+        if (this.shootingEntity == null) {
+            damageEvent = new EntityDamageByEntityEvent(
+                    this, entity, EntityDamageEvent.DamageCause.PROJECTILE, hitDamage, this.knockback);
+        } else {
+            damageEvent = new EntityDamageByChildEntityEvent(
+                    this.shootingEntity, this, entity,
+                    EntityDamageEvent.DamageCause.PROJECTILE, hitDamage, this.knockback);
+        }
+
+        if (entity.attack(damageEvent) && this.fireTicks > 0) {
+            EntityCombustByEntityEvent combustionEvent =
+                    new EntityCombustByEntityEvent(this, entity, 5);
+            this.server.getPluginManager().callEvent(combustionEvent);
+            if (!combustionEvent.isCancelled()) {
+                entity.setOnFire(combustionEvent.getDuration());
             }
         }
+
+        if (this.closeOnCollide) this.close();
     }
 
     public boolean onUpdate(int currentTick) {
