@@ -438,7 +438,10 @@ public class MRPGNPC extends PluginBase {
             getServer().getLogger().warning("Invalid ModelType '" + modelType + "' in NPC " + args[2] + "; using PLAYER.");
             modelType = "PLAYER";
         }
-        npc.setScale((float) Math.max(0.01, Math.min(16.0, config.getDouble("Scale", 1.0))));
+        double configuredScale = config.getDouble("Scale", 1.0);
+        if (Double.isNaN(configuredScale)) configuredScale = 1.0;
+        if (Double.isInfinite(configuredScale)) configuredScale = 1.0;
+        npc.setScale((float) Math.max(0.01, Math.min(16.0, configuredScale)));
         double defaultHitboxWidth = modelType.equals("BLOCK") ? 0.8 : 0.6;
         double defaultHitboxHeight = modelType.equals("BLOCK") ? 0.8 : 1.8;
         double configuredHitboxWidth = config.getDouble("HitboxWidth", -1);
