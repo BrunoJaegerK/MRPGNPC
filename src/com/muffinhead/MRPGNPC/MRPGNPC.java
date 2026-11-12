@@ -512,7 +512,7 @@ public class MRPGNPC extends PluginBase {
                 System.out.println("皮肤模型出错");
             }
             skin.setGeometryName("geometry.mrpgnpc");
-            skin.setSkinResourcePatch("{\\"geometry\\":{\\"default\\":\\"geometry.mrpgnpc\\"}}");
+            skin.setSkinResourcePatch("{\"geometry\":{\"default\":\"geometry.mrpgnpc\"}}");
             skin.setSkinId(skinthings.toFile().getName());
         }
         return skin;
@@ -523,7 +523,7 @@ public class MRPGNPC extends PluginBase {
         Skin skin = new Skin();
         skin.generateSkinId("mrpgnpc");
         skin.setGeometryName("geometry.mrpgnpc");
-        skin.setSkinResourcePatch("{\"geometry\":{\"default\":\"geometry.mrpgnpc\"}}");
+            skin.setSkinResourcePatch("{\"geometry\":{\"default\":\"geometry.mrpgnpc\"}}");
         skin.setGeometryData(new String(Files.readAllBytes(Paths.get(path.toString() + "/geometry.json"))));
         skin.setSkinData(ImageIO.read(Paths.get(path.toString() + "/skin.png").toFile()));
         skin.setTrusted(true);
