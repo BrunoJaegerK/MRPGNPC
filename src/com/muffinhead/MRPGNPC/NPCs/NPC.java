@@ -195,7 +195,6 @@ public class NPC extends EntityHuman {
         location.z += 0.5;
         this.teleport(location);
         spawnPosition = getPosition();
-        this.yawDelta = 0;
 
     }
 

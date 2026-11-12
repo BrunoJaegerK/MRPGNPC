@@ -25,6 +25,8 @@ public class Bullet extends EntityProjectile {
     double fyaw = 0;
     double fpitch = 0;
     public Entity master;
+    /** Whether the custom projectile disappears after a successful entity hit. */
+    public boolean closeOnCollide = true;
     public Bullet(FullChunk chunk, CompoundTag nbt, Entity entity, int networkID, Vector3 motion, double yaw, double pitch) {
         super(chunk, nbt);
         this.shootingEntity = entity;
