@@ -349,8 +349,8 @@ public class MRPGNPC extends PluginBase {
         config.set("ModelType", "PLAYER"); // PLAYER or BLOCK (custom Bedrock geometry)
         config.set("Skin", "");
         config.set("Scale", 1.0);
-        config.set("HitboxWidth", 0.6);
-        config.set("HitboxHeight", 1.8);
+        config.set("HitboxWidth", -1); // -1 uses the ModelType default
+        config.set("HitboxHeight", -1); // -1 uses the ModelType default
         config.set("Immobile", true);
         config.set("Collidable", false);
         config.set("NameTag", "");
@@ -439,10 +439,15 @@ public class MRPGNPC extends PluginBase {
             modelType = "PLAYER";
         }
         npc.setScale((float) Math.max(0.01, Math.min(16.0, config.getDouble("Scale", 1.0))));
+        double defaultHitboxWidth = modelType.equals("BLOCK") ? 0.8 : 0.6;
+        double defaultHitboxHeight = modelType.equals("BLOCK") ? 0.8 : 1.8;
+        double configuredHitboxWidth = config.getDouble("HitboxWidth", -1);
+        double configuredHitboxHeight = config.getDouble("HitboxHeight", -1);
+        if (configuredHitboxWidth <= 0) configuredHitboxWidth = defaultHitboxWidth;
+        if (configuredHitboxHeight <= 0) configuredHitboxHeight = defaultHitboxHeight;
         npc.configure(args[2], config.getString("Animation", ""),
                 Math.max(0, config.getInt("AnimationInterval", 40)),
-                (float) config.getDouble("HitboxWidth", modelType.equals("BLOCK") ? 0.8 : 0.6),
-                (float) config.getDouble("HitboxHeight", modelType.equals("BLOCK") ? 0.8 : 1.8));
+                (float) configuredHitboxWidth, (float) configuredHitboxHeight);
         npc.setImmobile(config.getBoolean("Immobile", true));
         npc.setCollidable(config.getBoolean("Collidable", false));
 
