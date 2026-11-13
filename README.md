@@ -90,6 +90,68 @@ The resource pack itself must also be installed/enabled on the Bedrock clients a
 
 **Important distinction:** `ModelType: BLOCK` is a player-protocol display entity rendered with custom Bedrock geometry, not a real world block or block entity. This allows a 3D resource-pack model to be positioned, scaled, named and animated without placing or replacing blocks in the world.
 
+### Import complete Bedrock model packs
+
+MRPGNPC can import a ZIP containing Bedrock resource-pack assets. Copy the ZIP to:
+
+```text
+plugins/MRPGNPC/imports/
+```
+
+Then run:
+
+```text
+/mrn pack import <pack-id> <file.zip>
+/mrn pack list
+```
+
+The importer:
+- extracts JSON, geometry, textures, animation/controller definitions, render controllers, materials and supported audio files;
+- rejects path traversal entries and enforces extraction limits (10,000 entries, 64 MiB per file, 512 MiB total);
+- creates a resource-pack `manifest.json` when the ZIP does not include one;
+- reads each `entity/*.entity.json` definition and tries to match its first geometry and texture to create a usable folder under `plugins/MRPGNPC/Skins/`;
+- copies matching animation and animation-controller JSON into the generated skin folder;
+- exports a Bedrock `.mcpack` at `plugins/MRPGNPC/exports/<pack-id>.mcpack`.
+
+Use the generated skin name in the NPC config. For example, importing a pack with id `Mineville` and an entity file named `axolotl_pet.entity.json` creates `Mineville_axolotl_pet` when its geometry and texture can be resolved.
+
+**Important:** importing a pack does not install or force it onto Bedrock clients. Install the exported `.mcpack` on clients or configure it as a server resource pack using the server's resource-pack mechanism. The client must have the same pack enabled for custom geometry, textures, animations and sounds to render/play.
+
+### Animation controllers and sounds
+
+Display NPC configurations now accept:
+
+```yaml
+Animation: "animation.axolotl_pet.idle"
+AnimationInterval: 0
+AnimationController: "__runtime_controller"
+AnimationNextState: "default"
+AnimationStopExpression: "query.any_animation_finished"
+AnimationBlendOut: 0.0
+Sound: ""
+SoundVolume: 1.0
+SoundPitch: 1.0
+SoundInterval: 0
+```
+
+- `Animation`: exact Bedrock animation identifier.
+- `AnimationController`: controller name placed in the Bedrock Animate Entity packet. Use a controller that is available to the client entity used by the NPC.
+- `AnimationNextState`, `AnimationStopExpression` and `AnimationBlendOut`: packet playback controls.
+- `Sound`: Bedrock sound event identifier declared by the enabled resource pack's `sounds/sound_definitions.json`.
+- `SoundVolume` / `SoundPitch`: playback volume and pitch.
+- `SoundInterval`: repeat interval in ticks; 0 disables automatic sound repetition.
+
+You can trigger them on an already spawned NPC:
+
+```text
+/mrn npc animation <id> <animation> [controller]
+/mrn npc sound <id> <sound-event> [volume] [pitch]
+```
+
+Sound events are sent to players in the same world within 64 blocks. The uploaded sample ZIP contains no `sounds/sound_definitions.json` or audio files, so it does not provide usable custom sound events by itself.
+
+**Compatibility boundary:** Display NPCs still use the player-entity spawn protocol so the existing stable custom-skin/geometry behavior is preserved. The importer retains the original custom `minecraft:client_entity` definitions and render-controller files in the exported pack, but those definitions are not automatically registered as new server runtime entity types by this plugin. Likewise, ModelEngine controllers that depend on custom entity properties such as `query.property('modelengine:anim0')` need the matching client-entity/runtime-property integration; merely sending their controller name cannot create those properties. Direct animation packets and packet controller selection are supported, but a full ModelEngine property-driven controller runtime is not claimed.
+
 ## Existing combat mobs
 
 Existing mob configurations in `plugins/MRPGNPC/Mobs/`, spawn points in `Points/`, skills in `Skills/` and `worldRandomSpawn.yml` remain separate from decorative NPC configurations. Existing commands and mob behavior are retained.
