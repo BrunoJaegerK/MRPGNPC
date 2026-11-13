@@ -147,6 +147,48 @@ jobs:
             }
           }
           JSON
+          mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/imports
+          python3 - <<'PY'
+          import json, struct, zlib, zipfile
+          from pathlib import Path
+          root = Path("NukkitPetteriM1Edition/plugins/MRPGNPC/imports")
+          w = h = 64
+          raw = b"".join(b"\x00" + bytes((255,255,255,255))*w for _ in range(h))
+          def chunk(kind, data):
+              return struct.pack(">I",len(data))+kind+data+struct.pack(">I",zlib.crc32(kind+data)&0xffffffff)
+          png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR",struct.pack(">IIBBBBB",w,h,8,6,0,0,0)) + chunk(b"IDAT",zlib.compress(raw)) + chunk(b"IEND",b"")
+          assets = {
+            "entity/display_smoke.entity.json": {"format_version":"1.10.0","minecraft:client_entity":{"description":{"identifier":"mrpgnpc:display_smoke","textures":{"default":"textures/entity/display_smoke"},"geometry":{"default":"geometry.display_smoke"},"animations":{"idle":"animation.display_smoke.idle","idle_control":"controller.animation.display_smoke.idle"},"scripts":{"animate":["idle_control"]},"render_controllers":["controller.render.display_smoke"]}}},
+            "models/entity/display_smoke.geo.json": {"format_version":"1.12.0","minecraft:geometry":[{"description":{"identifier":"geometry.display_smoke","texture_width":64,"texture_height":64,"visible_bounds_width":2,"visible_bounds_height":2,"visible_bounds_offset":[0,1,0]},"bones":[{"name":"root","pivot":[0,0,0],"cubes":[{"origin":[-4,0,-4],"size":[8,8,8],"uv":[0,0]}]}]}]},
+            "animations/display_smoke.animation.json": {"format_version":"1.8.0","animations":{"animation.display_smoke.idle":{"loop":True,"animation_length":1.0,"bones":{"root":{"rotation":[0,0,0]}}}}},
+            "animation_controllers/display_smoke.animation_controllers.json": {"format_version":"1.10.0","animation_controllers":{"controller.animation.display_smoke.idle":{"initial_state":"play","states":{"play":{"animations":["idle"]}}}}},
+            "render_controllers/controller.render.display_smoke.json": {"format_version":"1.8.0","render_controllers":{"controller.render.display_smoke":{"geometry":"Geometry.default","materials":[{"*":"Material.default"}],"textures":["Texture.default"]}}}
+          }
+          with zipfile.ZipFile(root / "smoke.zip","w",zipfile.ZIP_DEFLATED) as z:
+              for name,data in assets.items(): z.writestr(name,json.dumps(data))
+              z.writestr("textures/entity/display_smoke.png",png)
+          PY
+          cat > NukkitPetteriM1Edition/plugins/MRPGNPC/NPCs/display-import-smoke.yml <<'YAML'
+          DisplayName: "Imported model smoke test"
+          ModelType: "BLOCK"
+          Skin: "smoke_display_smoke"
+          Scale: 1.0
+          HitboxWidth: -1
+          HitboxHeight: -1
+          Immobile: true
+          Collidable: false
+          NameTag: "Imported model"
+          NameTagVisible: true
+          NameTagAlwaysVisible: true
+          Animation: "animation.display_smoke.idle"
+          AnimationInterval: 0
+          AnimationController: "controller.animation.display_smoke.idle"
+          AnimationNextState: "default"
+          AnimationStopExpression: "query.any_animation_finished"
+          AnimationBlendOut: 0.1
+          Sound: ""
+          SoundInterval: 0
+          YAML
           cat > NukkitPetteriM1Edition/plugins/MRPGNPC/NPCs/display-smoke.yml <<'YAML'
           DisplayName: "Display NPC smoke test"
           ModelType: "BLOCK"
@@ -163,11 +205,15 @@ jobs:
           AnimationInterval: 0
           YAML
           cd NukkitPetteriM1Edition
-          timeout 60s java -Xms512m -Xmx1g -jar target/Nukkit-PM1E.jar < <(sleep 20; echo 'mrn mob spawn smoke 0 80 0 world 0 0'; echo 'mrn npc spawn display-smoke 2 80 0 world 0 0'; sleep 10; echo stop) > smoke-test.log 2>&1
+          timeout 60s java -Xms512m -Xmx1g -jar target/Nukkit-PM1E.jar < <(sleep 20; echo 'mrn pack import smoke smoke.zip'; echo 'mrn mob spawn smoke 0 80 0 world 0 0'; echo 'mrn npc spawn display-smoke 2 80 0 world 0 0'; echo 'mrn npc spawn display-import-smoke 4 80 0 world 0 0'; echo 'mrn npc animation display-import-smoke animation.display_smoke.idle controller.animation.display_smoke.idle'; sleep 10; echo stop) > smoke-test.log 2>&1
           cat smoke-test.log
           grep -q "MRPGNPC is enable" smoke-test.log
           grep -q "Mob spawned" smoke-test.log
           grep -q "Display NPC spawned" smoke-test.log
+          grep -q "Resource pack imported: smoke" smoke-test.log
+          test -s plugins/MRPGNPC/exports/smoke.mcpack
+          test -s plugins/MRPGNPC/Skins/smoke_display_smoke/geometry.json
+          test -s plugins/MRPGNPC/Skins/smoke_display_smoke/animation_controllers.json
           if grep -E "NullPointerException|NoClassDefFoundError|ClassNotFoundException|Skipping invalid MRPGNPC spawn point" smoke-test.log; then
             echo "MRPGNPC smoke test reported a runtime error."
             exit 1
