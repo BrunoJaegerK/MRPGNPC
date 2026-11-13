@@ -6,10 +6,11 @@ import cn.nukkit.event.entity.EntityDamageEvent;
 import cn.nukkit.network.protocol.AnimateEntityPacket;
 import cn.nukkit.network.protocol.PlaySoundPacket;
 import cn.nukkit.network.protocol.ProtocolInfo;
+import cn.nukkit.scheduler.Task;
 import cn.nukkit.level.format.FullChunk;
 import cn.nukkit.nbt.tag.CompoundTag;
 
-import java.util.Locale;
+import java.util.regex.Pattern;
 
 /**
  * A decorative model entity. It deliberately does not inherit MobNPC and therefore
@@ -127,13 +128,53 @@ public class DisplayNPC extends NPC {
         }
     }
 
+    /**
+     * Bedrock skin animation data contains animation definitions, not animation
+     * controller state. For looping definitions, query.any_animation_finished
+     * can stop the runtime animation immediately on some client builds. Detect
+     * the selected definition and use a constant-false stop expression instead.
+     */
+    private boolean isLoopingAnimation() {
+        if (this.animation.isEmpty() || this.getSkin() == null) return false;
+        String data = this.getSkin().getAnimationData();
+        if (data == null || data.isEmpty()) return false;
+
+        String key = "\"" + this.animation + "\"";
+        int keyStart = data.indexOf(key);
+        if (keyStart < 0) return false;
+        int objectStart = data.indexOf('{', keyStart + key.length());
+        if (objectStart < 0) return false;
+
+        int depth = 0;
+        boolean quoted = false;
+        boolean escaped = false;
+        for (int i = objectStart; i < data.length(); i++) {
+            char ch = data.charAt(i);
+            if (quoted) {
+                if (escaped) escaped = false;
+                else if (ch == '\\\\') escaped = true;
+                else if (ch == '"') quoted = false;
+                continue;
+            }
+            if (ch == '"') quoted = true;
+            else if (ch == '{') depth++;
+            else if (ch == '}' && --depth == 0) {
+                String definition = data.substring(objectStart, i + 1);
+                return Pattern.compile("\\\"loop\\\"\\s*:\\s*true",
+                        Pattern.CASE_INSENSITIVE).matcher(definition).find();
+            }
+        }
+        return false;
+    }
+
     private void sendAnimation(Player player) {
-        if (player.protocol < ProtocolInfo.v1_16_100 || this.animation.isEmpty()) return;
+        if (player == null || !player.isOnline()
+                || player.protocol < ProtocolInfo.v1_16_100 || this.animation.isEmpty()) return;
         AnimateEntityPacket packet = new AnimateEntityPacket();
         packet.animation = this.animation;
         packet.controller = this.animationController;
         packet.nextState = this.animationNextState;
-        packet.stopExpression = this.animationStopExpression;
+        packet.stopExpression = isLoopingAnimation() ? "0.0" : this.animationStopExpression;
         packet.blendOutTime = this.animationBlendOut;
         packet.runtimeEntityIds.add(this.getId());
         player.dataPacket(packet);
@@ -192,7 +233,17 @@ public class DisplayNPC extends NPC {
         boolean alreadySpawned = this.hasSpawned.containsKey(player.getLoaderId());
         super.spawnTo(player);
         if (!alreadySpawned && this.hasSpawned.containsKey(player.getLoaderId())) {
+            // Send once after the player skin/entity packets, then retry shortly
+            // after the client has registered the newly spawned runtime entity.
             sendAnimation(player);
+            Server.getInstance().getScheduler().scheduleDelayedTask(new Task() {
+                @Override
+                public void onRun(int currentTick) {
+                    if (!closed && hasSpawned.containsKey(player.getLoaderId())) {
+                        sendAnimation(player);
+                    }
+                }
+            }, 2);
         }
     }
 }
