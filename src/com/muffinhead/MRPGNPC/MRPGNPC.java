@@ -119,6 +119,61 @@ public class MRPGNPC extends PluginBase {
                         : "§aAll dropped items were cleared.");
                 return true;
             }
+            case "pack": {
+                if (args.length < 2) return false;
+                switch (args[1].toLowerCase(Locale.ROOT)) {
+                    case "list": {
+                        Path packs = getDataFolder().toPath().resolve("ResourcePacks");
+                        if (!Files.isDirectory(packs)) {
+                            sender.sendMessage("§eNo imported resource packs found.");
+                            return true;
+                        }
+                        try (java.util.stream.Stream<Path> stream = Files.list(packs)) {
+                            List<String> names = new ArrayList<>();
+                            stream.filter(Files::isDirectory).forEach(path -> names.add(path.getFileName().toString()));
+                            sender.sendMessage(names.isEmpty() ? "§eNo imported resource packs found."
+                                    : "§aImported packs: §f" + String.join(", ", names));
+                        } catch (IOException exception) {
+                            sender.sendMessage("§cCould not list resource packs: " + exception.getMessage());
+                        }
+                        return true;
+                    }
+                    case "import": {
+                        if (args.length != 4 || !isValidConfigId(args[2])
+                                || !args[3].matches("[A-Za-z0-9_.-]{1,96}\\.zip")) {
+                            sender.sendMessage("§cUsage: /mrn pack import <id> <zip-name>");
+                            sender.sendMessage("§7Place the ZIP in plugins/MRPGNPC/imports/ first.");
+                            return true;
+                        }
+                        try {
+                            Path imports = getDataFolder().toPath().resolve("imports");
+                            Files.createDirectories(imports);
+                            Path archive = imports.resolve(args[3]).normalize();
+                            if (!archive.startsWith(imports.normalize())) {
+                                sender.sendMessage("§cInvalid ZIP path.");
+                                return true;
+                            }
+                            ResourcePackImporter.ImportResult result = ResourcePackImporter.importPack(
+                                    archive, getDataFolder().toPath(), args[2]);
+                            checkSkins();
+                            sender.sendMessage("§aResource pack imported: §f" + args[2]);
+                            sender.sendMessage("§7Files: " + result.files + " | models converted to skins: " + result.models);
+                            sender.sendMessage("§7Export: plugins/MRPGNPC/exports/" + args[2] + ".mcpack");
+                            if (!result.hasSounds) {
+                                sender.sendMessage("§eNo sounds/sound_definitions.json was found in this ZIP.");
+                            }
+                            sender.sendMessage("§eInstall the exported pack on Bedrock clients/server and restart as required.");
+                        } catch (Exception exception) {
+                            getServer().getLogger().error("Could not import MRPGNPC resource pack", exception);
+                            sender.sendMessage("§cResource pack import failed: " + exception.getMessage());
+                        }
+                        return true;
+                    }
+                    default:
+                        sender.sendMessage("§eUsage: /mrn pack <import|list> ...");
+                        return true;
+                }
+            }
             case "npc": {
                 if (args.length < 2) return false;
                 switch (args[1].toLowerCase(Locale.ROOT)) {
@@ -174,6 +229,41 @@ public class MRPGNPC extends PluginBase {
                             sender.sendMessage("§eNo display NPC configurations found.");
                         } else {
                             sender.sendMessage("§aDisplay NPCs: §f" + String.join(", ", displayNpcConfigs.keySet()));
+                        }
+                        return true;
+                    }
+                    case "animation": {
+                        if (args.length < 4 || args.length > 5) {
+                            sender.sendMessage("§cUsage: /mrn npc animation <id> <animation> [controller]");
+                            return true;
+                        }
+                        DisplayNPC target = findDisplayNPC(args[2]);
+                        if (target == null) {
+                            sender.sendMessage("§cNo active display NPC found with config id: " + args[2]);
+                            return true;
+                        }
+                        if (args.length == 5) target.setAnimationController(args[4]);
+                        target.setDisplayAnimation(args[3], 0);
+                        sender.sendMessage("§aAnimation sent to display NPC: " + args[2]);
+                        return true;
+                    }
+                    case "sound": {
+                        if (args.length < 4 || args.length > 6) {
+                            sender.sendMessage("§cUsage: /mrn npc sound <id> <sound-event> [volume] [pitch]");
+                            return true;
+                        }
+                        DisplayNPC target = findDisplayNPC(args[2]);
+                        if (target == null) {
+                            sender.sendMessage("§cNo active display NPC found with config id: " + args[2]);
+                            return true;
+                        }
+                        try {
+                            float volume = args.length >= 5 ? Float.parseFloat(args[4]) : 1.0f;
+                            float pitch = args.length >= 6 ? Float.parseFloat(args[5]) : 1.0f;
+                            target.playDisplaySound(args[3], volume, pitch);
+                            sender.sendMessage("§aSound event sent: " + args[3]);
+                        } catch (NumberFormatException exception) {
+                            sender.sendMessage("§cVolume and pitch must be numeric.");
                         }
                         return true;
                     }
@@ -357,7 +447,15 @@ public class MRPGNPC extends PluginBase {
         config.set("NameTagVisible", false);
         config.set("NameTagAlwaysVisible", false);
         config.set("Animation", "");
-        config.set("AnimationInterval", 0); // 0 plays once when each client receives the NPC
+        config.set("AnimationInterval", 0);
+        config.set("AnimationController", "__runtime_controller");
+        config.set("AnimationNextState", "default");
+        config.set("AnimationStopExpression", "query.any_animation_finished");
+        config.set("AnimationBlendOut", 0.0);
+        config.set("Sound", "");
+        config.set("SoundVolume", 1.0);
+        config.set("SoundPitch", 1.0);
+        config.set("SoundInterval", 0);
         return config;
     }
 
@@ -449,8 +547,17 @@ public class MRPGNPC extends PluginBase {
         if (configuredHitboxWidth <= 0) configuredHitboxWidth = defaultHitboxWidth;
         if (configuredHitboxHeight <= 0) configuredHitboxHeight = defaultHitboxHeight;
         npc.configure(args[2], config.getString("Animation", ""),
-                Math.max(0, config.getInt("AnimationInterval", 40)),
+                Math.max(0, config.getInt("AnimationInterval", 0)),
                 (float) configuredHitboxWidth, (float) configuredHitboxHeight);
+        npc.configureAnimationControl(
+                config.getString("AnimationController", "__runtime_controller"),
+                config.getString("AnimationNextState", "default"),
+                config.getString("AnimationStopExpression", "query.any_animation_finished"),
+                (float) config.getDouble("AnimationBlendOut", 0.0));
+        npc.configureSound(config.getString("Sound", ""),
+                (float) config.getDouble("SoundVolume", 1.0),
+                (float) config.getDouble("SoundPitch", 1.0),
+                Math.max(0, config.getInt("SoundInterval", 0)));
         npc.setImmobile(config.getBoolean("Immobile", true));
         npc.setCollidable(config.getBoolean("Collidable", false));
 
@@ -644,6 +751,19 @@ public class MRPGNPC extends PluginBase {
         npc.setEnableBox(boundingBox);
         npc.moveLimitDistance = config.getDouble("MoveLimitDistance", 15.0);
         return npc;
+    }
+
+    private DisplayNPC findDisplayNPC(String configId) {
+        if (configId == null) return null;
+        for (Level level : getServer().getLevels().values()) {
+            for (Entity entity : level.getEntities()) {
+                if (entity instanceof DisplayNPC
+                        && ((DisplayNPC) entity).getConfigId().equalsIgnoreCase(configId)) {
+                    return (DisplayNPC) entity;
+                }
+            }
+        }
+        return null;
     }
 
     private List<String> getStringList(Config config, String key) {
