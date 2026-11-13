@@ -6,7 +6,7 @@
 
     <groupId>com.muffinhead</groupId>
     <artifactId>MRPGNPC</artifactId>
-    <version>1.2.7-PM1E</version>
+    <version>1.2.8-PM1E</version>
     <name>MRPGNPC for NukkitPetteriM1Edition</name>
     <packaging>jar</packaging>
 
