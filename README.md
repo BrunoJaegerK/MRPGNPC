@@ -90,6 +90,56 @@ The resource pack itself must also be installed/enabled on the Bedrock clients a
 
 **Important distinction:** `ModelType: BLOCK` is a player-protocol display entity rendered with custom Bedrock geometry, not a real world block or block entity. This allows a 3D resource-pack model to be positioned, scaled, named and animated without placing or replacing blocks in the world.
 
+### Example: using Mineville's sign_warzone model
+
+The Mineville pack includes a client entity named `modelengine:sign_warzone`. Its client-entity definition points to:
+
+- Geometry: `geometry.meg_sign_warzone_1000_320`
+- Texture: `textures/entity/sign_warzone/warzone`
+- Entity definition: `entity/sign_warzone.entity.json`
+
+Import the ZIP containing the Mineville resource-pack files:
+
+```text
+/mrn pack import Mineville <file.zip>
+```
+
+The importer uses the entity definition filename to generate a skin folder. For this example, the expected generated skin name is `Mineville_sign_warzone`. Check that the folder exists under `plugins/MRPGNPC/Skins/` after import.
+
+Create the decorative NPC:
+
+```text
+/mrn npc create sign_warzone
+```
+
+Set its configuration in `plugins/MRPGNPC/NPCs/sign_warzone.yml`:
+
+```yaml
+DisplayName: "Warzone"
+ModelType: "BLOCK"
+Skin: "Mineville_sign_warzone"
+Scale: 1.0
+HitboxWidth: -1
+HitboxHeight: -1
+Immobile: true
+Collidable: false
+NameTag: ""
+NameTagVisible: false
+NameTagAlwaysVisible: false
+Animation: ""
+AnimationInterval: 0
+```
+
+Then spawn it:
+
+```text
+/mrn npc spawn sign_warzone
+```
+
+You can also spawn it at a specific location using the coordinate form shown above. Adjust `Scale` to change the displayed model size.
+
+**ModelEngine compatibility note:** the `modelengine:sign_warzone` identifier is metadata in the Bedrock client-entity definition; it does not make MRPGNPC spawn a native ModelEngine entity. MRPGNPC display NPCs use the player-entity spawn protocol and load the imported geometry/texture through their generated skin. The entity's render-controller reference and ModelEngine-specific runtime behavior are not automatically registered as a new server entity type. The client must have the matching Mineville pack enabled to render the custom model. If the generated skin folder is missing or the model does not render, inspect the importer's output and confirm that its geometry and texture were resolved into that folder.
+
 ### Import complete Bedrock model packs
 
 MRPGNPC can import a ZIP containing Bedrock resource-pack assets. Copy the ZIP to:
