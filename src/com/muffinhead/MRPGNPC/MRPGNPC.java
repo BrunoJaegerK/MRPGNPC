@@ -547,7 +547,7 @@ public class MRPGNPC extends PluginBase {
         if (configuredHitboxWidth <= 0) configuredHitboxWidth = defaultHitboxWidth;
         if (configuredHitboxHeight <= 0) configuredHitboxHeight = defaultHitboxHeight;
         npc.configure(args[2], config.getString("Animation", ""),
-                Math.max(0, config.getInt("AnimationInterval", 0)),
+                Math.max(0, config.getInt("AnimationInterval", 40)),
                 (float) configuredHitboxWidth, (float) configuredHitboxHeight);
         npc.configureAnimationControl(
                 config.getString("AnimationController", "__runtime_controller"),
