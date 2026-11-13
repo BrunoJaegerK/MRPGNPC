@@ -152,7 +152,7 @@ public class DisplayNPC extends NPC {
             char ch = data.charAt(i);
             if (quoted) {
                 if (escaped) escaped = false;
-                else if (ch == '\\\\') escaped = true;
+                else if (ch == '\\') escaped = true;
                 else if (ch == '"') quoted = false;
                 continue;
             }
