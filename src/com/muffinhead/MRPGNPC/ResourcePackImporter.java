@@ -203,7 +203,7 @@ public final class ResourcePackImporter {
                         + "EntityIdentifier: \"" + identifier + "\"\n"
                         + "GeometryIdentifier: \"" + geometryId + "\"\n"
                         + "Texture: \"" + texture + "\"\n"
-                        + "EntityDefinition: \"" + packRoot.relativize(entityFile).toString().replace('\\\\', '/') + "\"\n";
+                        + "EntityDefinition: \"" + packRoot.relativize(entityFile).toString().replace('\\', '/') + "\"\n";
                 Files.writeString(skinFolder.resolve("model.yml"), metadata, StandardCharsets.UTF_8);
                 generated++;
             }
@@ -249,7 +249,7 @@ public final class ResourcePackImporter {
         try (ZipOutputStream zip = new ZipOutputStream(new BufferedOutputStream(Files.newOutputStream(output)));
              Stream<Path> paths = Files.walk(root)) {
             for (Path file : (Iterable<Path>) paths.filter(Files::isRegularFile)::iterator) {
-                String name = root.relativize(file).toString().replace('\\\\', '/');
+                String name = root.relativize(file).toString().replace('\\', '/');
                 zip.putNextEntry(new ZipEntry(name));
                 Files.copy(file, zip);
                 zip.closeEntry();
