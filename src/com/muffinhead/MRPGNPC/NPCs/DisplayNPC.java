@@ -99,7 +99,6 @@ public class DisplayNPC extends NPC {
     public void setAnimationController(String controller) {
         this.animationController = controller == null || controller.trim().isEmpty()
                 ? "__runtime_controller" : controller.trim();
-        broadcastAnimation();
     }
 
     public void playDisplaySound(String sound, float volume, float pitch) {
