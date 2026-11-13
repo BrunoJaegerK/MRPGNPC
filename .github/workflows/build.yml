@@ -51,7 +51,7 @@ jobs:
           mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/Mobs
           mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/Points
           mkdir -p NukkitPetteriM1Edition/plugins/MRPGNPC/NPCs
-          cp target/MRPGNPC-1.2.7-PM1E.jar NukkitPetteriM1Edition/plugins/MRPGNPC.jar
+          cp target/MRPGNPC-1.2.8-PM1E.jar NukkitPetteriM1Edition/plugins/MRPGNPC.jar
           cat > /tmp/ScriptEngineSmoke.java <<'JAVA'
           import javax.script.ScriptEngine;
           import javax.script.ScriptEngineManager;
@@ -65,8 +65,8 @@ jobs:
               }
           }
           JAVA
-          javac -cp target/MRPGNPC-1.2.7-PM1E.jar /tmp/ScriptEngineSmoke.java
-          java -cp target/MRPGNPC-1.2.7-PM1E.jar:/tmp ScriptEngineSmoke
+          javac -cp target/MRPGNPC-1.2.8-PM1E.jar /tmp/ScriptEngineSmoke.java
+          java -cp target/MRPGNPC-1.2.8-PM1E.jar:/tmp ScriptEngineSmoke
           cat > NukkitPetteriM1Edition/plugins/MRPGNPC/Mobs/smoke.yml <<'YAML'
           DisplayName: "MRPGNPC smoke test"
           MaxHealth: 40
@@ -177,5 +177,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: MRPGNPC-PM1E
-          path: target/MRPGNPC-1.2.7-PM1E.jar
+          path: target/MRPGNPC-1.2.8-PM1E.jar
           if-no-files-found: error
